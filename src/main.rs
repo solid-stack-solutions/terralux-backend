@@ -19,7 +19,7 @@ async fn main() {
     )).init();
 
     let year_timer = Arc::new(Mutex::new(Some(year::Timer::new([
-        day::Timer::new(Time::new(8, 0), Time::new(18, 0)); 365]
+        day::Timer::new(Time::new(8, 0), Time::new(18, 0)); 366]
     ))));
 
     // to avoid matching timers more than once per minute
