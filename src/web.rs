@@ -15,7 +15,7 @@ type Response<T> = Result<T, (StatusCode, &'static str)>;
     utoipa::IntoParams, serde::Deserialize,
 )]
 struct PutState {
-    /// average sunrise/sunset times between local ones (0.0) and ones from the natural habitat (1.0)
+    /// Average sunrise/sunset times between local ones (0.0) and ones from the natural habitat (1.0)
     #[param(minimum = 0.0, maximum = 1.0)]
     natural_factor: f32
 }
@@ -25,8 +25,8 @@ struct PutState {
     path = "/state",
     params(PutState),
     responses(
-        (status = 200, description = "Successfully put state."),
-        (status = 400, description = "Request did not match expected structure."),
+        (status = 200, description = "Successfully put state"),
+        (status = 400, description = "Request did not match expected structure"),
     ),
 )]
 async fn put_state(

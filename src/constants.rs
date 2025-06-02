@@ -1,4 +1,6 @@
 use std::time::Duration;
+
+/// interval for checking if the current minute matches a timer
 pub const CHECK_INTERVAL: Duration = Duration::from_secs(5);
 
 /// timezone to use for timers

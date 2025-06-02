@@ -1,6 +1,8 @@
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Time {
+    /// between 0 and 23 
     hour: i8,
+    /// between 0 and 59 
     minute: i8,
 }
 
