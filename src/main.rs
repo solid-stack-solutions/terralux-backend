@@ -27,14 +27,12 @@ async fn main() {
 
     loop {
         let now = Time::now();
-        // if timers have already been checked this minute
-        if now == last_checked_time {
-            continue;
+        if now != last_checked_time {
+
+            // TODO check if a timer matches now 
+
+            last_checked_time = now;
         }
-
-        // TODO check if timer matches now 
-
-        last_checked_time = now;
 
         thread::sleep(CHECK_INTERVAL);
     }
