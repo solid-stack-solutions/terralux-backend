@@ -15,6 +15,13 @@ impl Time {
         Self { hour, minute }
     }
 
+    /// from military time string like "1800"
+    pub fn from_military(military_time: &str) -> Self {
+        assert_eq!(military_time.len(), 4);
+        let (hour, minute) = military_time.split_at(2);
+        Self::new(hour.parse().unwrap(), minute.parse().unwrap())
+    }
+
     pub fn now() -> Self {
         use chrono::{Utc, Timelike};
         use crate::constants::TIMEZONE;
@@ -91,5 +98,10 @@ mod tests {
     #[test]
     fn sub() {
         assert_eq!(Time::new(8, 15) - Time::new(1, 20), Time::new(6, 55));
+    }
+
+    #[test]
+    fn from_military() {
+        assert_eq!(Time::from_military("1612"), Time::new(16, 12));
     }
 }
