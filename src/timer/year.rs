@@ -9,7 +9,12 @@ pub struct Timer {
 impl Timer {
     /// day timers don't include leap day
     #[allow(clippy::large_types_passed_by_value)]
-    const fn new(day_timers: [day::Timer; 365]) -> Self {
+    pub const fn new(day_timers: [day::Timer; 365]) -> Self {
         Self { day_timers }
+    }
+
+    pub const fn for_today(&self) -> &day::Timer {
+        // TODO implement
+        &self.day_timers[0]
     }
 }
