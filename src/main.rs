@@ -1,5 +1,6 @@
 mod timer;
 mod constants;
+mod sunrise_api;
 mod time;
 mod web;
 
@@ -17,7 +18,12 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME"))
     )).init();
 
-    let year_timer = Arc::new(Mutex::new(None));
+    log::info!("requesting year timer from API");
+    let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(-21.3, 165.4).await.unwrap();
+    log::info!("got year timer from API");
+    log::trace!("\n{}", year_timer);
+
+    let year_timer = Arc::new(Mutex::new(Some(year_timer)));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = Time::now() - Time::new(0, 1);
@@ -29,7 +35,16 @@ async fn main() {
         let now = Time::now();
         if now != last_checked_time {
 
-            // TODO check if a timer matches now 
+            let year_timer = *year_timer.lock().await;
+            if let Some(year_timer) = year_timer {
+                let day_timer = year_timer.for_today();
+                if now == *day_timer.on_time() {
+                    log::info!("matched timer, turning plug on");
+                }
+                if now == *day_timer.off_time() {
+                    log::info!("matched timer, turning plug off");
+                }
+            }
 
             last_checked_time = now;
         }
