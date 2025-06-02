@@ -55,3 +55,41 @@ impl std::ops::Add for Time {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Time;
+    const ZERO: Time = Time::new(0, 0);
+
+    #[test]
+    fn add_zero_1() {
+        assert_eq!(ZERO + ZERO, ZERO);
+    }
+
+    #[test]
+    fn add_zero_2() {
+        let time = Time::new(10, 12);
+        assert_eq!(time + ZERO, time);
+    }
+
+    #[test]
+    fn add() {
+        assert_eq!(Time::new(8, 12) + Time::new(3, 59), Time::new(12, 11));
+    }
+
+    #[test]
+    fn sub_zero_1() {
+        assert_eq!(ZERO - ZERO, ZERO);
+    }
+
+    #[test]
+    fn sub_zero_2() {
+        let time = Time::new(10, 12);
+        assert_eq!(time - ZERO, time);
+    }
+
+    #[test]
+    fn sub() {
+        assert_eq!(Time::new(8, 15) - Time::new(1, 20), Time::new(6, 55));
+    }
+}
