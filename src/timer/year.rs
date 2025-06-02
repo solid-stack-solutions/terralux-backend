@@ -40,6 +40,15 @@ impl Timer {
     }
 }
 
+impl std::fmt::Display for Timer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0 .. self.day_timers.len() {
+            writeln!(f, "{:3} {}", i + 1, self.day_timers[i])?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

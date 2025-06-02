@@ -21,7 +21,7 @@ async fn main() {
     log::info!("requesting year timer from API");
     let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(-21.3, 165.4).await.unwrap();
     log::info!("got year timer from API");
-    log::trace!("{:?}", year_timer);
+    log::trace!("\n{}", year_timer);
 
     let year_timer = Arc::new(Mutex::new(Some(year_timer)));
 

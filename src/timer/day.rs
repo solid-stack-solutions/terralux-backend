@@ -23,3 +23,9 @@ impl Timer {
         &self.off_time
     }
 }
+
+impl std::fmt::Display for Timer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ on: {}, off: {} }}", self.on_time, self.off_time)
+    }
+}
