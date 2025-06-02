@@ -13,8 +13,20 @@ impl Timer {
         Self { day_timers }
     }
 
-    pub const fn for_today(&self) -> &day::Timer {
-        // TODO implement
-        &self.day_timers[0]
+    pub fn for_today(&self) -> &day::Timer {
+        use chrono::{Utc, Datelike};
+        use crate::constants::TIMEZONE;
+
+        // may be 365 in leap years
+        let day = Utc::now().with_timezone(&TIMEZONE).ordinal0();
+
+        let index = match day {
+            // treat last day of leap year like second last
+            // to stay in range of day timer index (max. 364)
+            365 => 364,
+            _ => day,
+        };
+
+        &self.day_timers[index as usize]
     }
 }
