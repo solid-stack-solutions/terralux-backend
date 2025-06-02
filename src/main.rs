@@ -1,5 +1,6 @@
 mod timer;
 mod constants;
+mod sunrise_api;
 mod time;
 mod web;
 
@@ -7,7 +8,6 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 
 use time::Time;
-use timer::{day, year};
 use constants::CHECK_INTERVAL;
 
 #[tokio::main]
@@ -18,9 +18,12 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME"))
     )).init();
 
-    let year_timer = Arc::new(Mutex::new(Some(year::Timer::new([
-        day::Timer::new(Time::new(8, 0), Time::new(18, 0)); 366]
-    ))));
+    log::info!("requesting year timer from API");
+    let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(-21.3, 165.4).await.unwrap();
+    log::info!("got year timer from API");
+    log::trace!("{:?}", year_timer);
+
+    let year_timer = Arc::new(Mutex::new(Some(year_timer)));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = Time::now() - Time::new(0, 1);
