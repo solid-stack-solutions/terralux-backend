@@ -4,7 +4,7 @@ mod time;
 mod web;
 
 use tokio::sync::Mutex;
-use std::{thread, sync::Arc};
+use std::sync::Arc;
 
 use time::Time;
 use constants::CHECK_INTERVAL;
@@ -34,6 +34,6 @@ async fn main() {
             last_checked_time = now;
         }
 
-        thread::sleep(CHECK_INTERVAL);
+        tokio::time::sleep(CHECK_INTERVAL).await;
     }
 }
