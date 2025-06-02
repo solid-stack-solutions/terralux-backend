@@ -53,15 +53,3 @@ impl std::ops::Add for Time {
         )
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DayTimer {
-    on_time: Time,
-    off_time: Time,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct YearTimer {
-    /// does not include leap day
-    day_timers: [DayTimer; 365]
-}

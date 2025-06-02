@@ -5,7 +5,7 @@ use axum::{
     http::StatusCode
 };
 
-use crate::timer::YearTimer;
+use crate::timer::year;
 
 type Response<T> = Result<T, (StatusCode, &'static str)>;
 
@@ -31,14 +31,14 @@ struct PutState {
     ),
 )]
 async fn put_state(
-    State(state): State<Arc<Mutex<Option<YearTimer>>>>,
+    State(state): State<Arc<Mutex<Option<year::Timer>>>>,
     extract::Json(new_state): extract::Json<PutState>
 ) -> Response<&'static str> {
     Ok("response")
 }
 
 /// start webserver. never terminates.
-pub async fn start_server(year_timer: Arc<Mutex<Option<YearTimer>>>) {
+pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
     use utoipa::OpenApi;
     use tokio::net::TcpListener;
     use utoipa_swagger_ui::SwaggerUi;
