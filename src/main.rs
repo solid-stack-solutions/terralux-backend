@@ -23,7 +23,7 @@ async fn main() {
         let now = Time::now();
         // if timers have already been checked this minute
         if now == last_checked_time {
-            return;
+            continue;
         }
 
         // TODO check if timer matches now 
