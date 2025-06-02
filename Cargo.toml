@@ -1,5 +1,5 @@
 [package]
-name = "terralux-backend"
+name = "terralux_backend"
 version = "0.0.0"
 edition = "2021"
 
@@ -7,6 +7,9 @@ edition = "2021"
 axum = "0.7" # webserver
 reqwest = { version = "0.12", features = ["json"] } # make http requests
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros"] } # async runtime
+# logging
+log = "0.4.27" # api
+env_logger = "0.11.8" # implementation
 # get current time with timezone
 chrono    = "0.4"
 chrono-tz = "0.10"

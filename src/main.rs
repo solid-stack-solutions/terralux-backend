@@ -11,6 +11,11 @@ use constants::CHECK_INTERVAL;
 
 #[tokio::main]
 async fn main() {
+    // set up logging with default level if env var `RUST_LOG` is unset
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or(
+            format!("error,{}=info", env!("CARGO_PKG_NAME"))
+    )).init();
 
     let year_timer = Arc::new(Mutex::new(None));
 

@@ -37,6 +37,9 @@
           clippy
           cargo-edit # provides `cargo upgrade` for dependencies
         ]);
+
+        # enable logging
+        RUST_LOG = "error,terralux_backend=trace";
         # fix rust-analyzer in vscode
         RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
       };

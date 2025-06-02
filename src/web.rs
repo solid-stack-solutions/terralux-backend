@@ -33,7 +33,7 @@ async fn put_state(
     State(state): State<Arc<Mutex<Option<year::Timer>>>>,
     Query(put_state): Query<PutState>
 ) -> Response<&'static str> {
-    println!("{:?}", put_state.natural_factor);
+    log::debug!("got natural factor {}", put_state.natural_factor);
     Ok("response")
 }
 
@@ -71,6 +71,6 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
             .url("/openapi.json", ApiDoc::openapi()));
 
     let address = std::net::SocketAddr::new(LOCALHOST, PORT);
-    println!("starting server on http://{address} ...");
+    log::info!("starting server on http://{address}");
     axum::serve(TcpListener::bind(address).await.unwrap(), app).await.unwrap();
 }
