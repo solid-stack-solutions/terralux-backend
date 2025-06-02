@@ -72,5 +72,16 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
 
     let address = std::net::SocketAddr::new(LOCALHOST, PORT);
     log::info!("starting server on http://{address}");
-    axum::serve(TcpListener::bind(address).await.unwrap(), app).await.unwrap();
+
+    let tcp_listener = TcpListener::bind(address).await;
+    if let Err(ref error) = tcp_listener {
+        if error.kind() == std::io::ErrorKind::AddrInUse {
+            log::error!("address http://{address} is already in use, is this server already running?");
+            std::process::exit(1);
+        } else {
+            panic!("{error:?}");
+        }
+    }
+
+    axum::serve(tcp_listener.unwrap(), app).await.unwrap();
 }
