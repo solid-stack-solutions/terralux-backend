@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use axum::{
-    extract::{self, State},
+    extract::{Query, State},
     http::StatusCode
 };
 
@@ -11,13 +11,12 @@ type Response<T> = Result<T, (StatusCode, &'static str)>;
 
 #[derive(
     Debug,
-    serde::Deserialize, // from axum::Json
-    utoipa::ToSchema,  // to display in swagger-ui
-    utoipa::IntoParams, // ???
+    // from query parameters
+    utoipa::IntoParams, serde::Deserialize,
 )]
 struct PutState {
     /// average sunrise/sunset times between local ones (0.0) and ones from the natural habitat (1.0)
-    #[schema(minimum = 0.0, maximum = 1.0)]
+    #[param(minimum = 0.0, maximum = 1.0)]
     natural_factor: f32
 }
 
@@ -26,14 +25,15 @@ struct PutState {
     path = "/state",
     params(PutState),
     responses(
-        (status = 200, description = "Successfully put state.", body = PutState),
+        (status = 200, description = "Successfully put state."),
         (status = 400, description = "Request did not match expected structure."),
     ),
 )]
 async fn put_state(
     State(state): State<Arc<Mutex<Option<year::Timer>>>>,
-    extract::Json(new_state): extract::Json<PutState>
+    Query(put_state): Query<PutState>
 ) -> Response<&'static str> {
+    println!("{:?}", put_state.natural_factor);
     Ok("response")
 }
 
@@ -53,10 +53,8 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
             // functions with #[utoipa::path(...)]
             put_state,
         ),
-        components(schemas(
-            // enums/structs with #[derive(utoipa::ToSchema)]
-            PutState,
-        ))
+        // enums/structs with #[derive(utoipa::ToSchema)]
+        //components(schemas( ... ))
     )]
     struct ApiDoc;
 
