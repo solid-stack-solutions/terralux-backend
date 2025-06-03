@@ -1,7 +1,11 @@
 use reqwest::Client;
+use std::time::Duration;
 use axum::http::StatusCode;
 
 use crate::web;
+
+/// minimum interval between API requests to avoid rate limiting
+pub const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -39,54 +43,44 @@ struct APIResponse {
     status: String,
 }
 
-pub struct SunriseAPI {
-    client: Client,
-}
+/// result has exactly 366 elements
+pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResponseDay>> {
+    // request leap year to get 366 response days
+    let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
 
-impl SunriseAPI {
-    pub fn new() -> Self {
-        Self {
-            client: Client::new(),
-        }
+    // reusing the client leads to hitting the rate limit a lot faster
+    // => create a new client for every request
+    let response = Client::new().get(url).send().await;
+    if response.is_err() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
     }
 
-    /// result has exactly 366 elements
-    pub async fn request(&self, latitude: f32, longitude: f32) -> web::Response<Vec<APIResponseDay>> {
-        // request leap year to get 366 response days
-        let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
-
-        let response = self.client.get(url).send().await;
-        if response.is_err() {
-            return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
-        }
-
-        let response = response.unwrap();
-        match response.status() {
-            StatusCode::OK => (),
-            StatusCode::SERVICE_UNAVAILABLE =>
-                return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit"))),
-            code =>
-                return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
-        }
-
-        let response = response.json::<APIResponse>().await;
-        if response.is_err() {
-            return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
-        }
-
-        let response = response.unwrap();
-        if response.status != "OK" {
-            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API responded with \"{}\" instead of \"OK\"", response.status)));
-        }
-        if response.days.is_none() {
-            return Err((StatusCode::BAD_GATEWAY, String::from("Sunrise API responded \"OK\" without any data")));
-        }
-
-        let days = response.days.unwrap();
-        if days.len() != 366 {
-            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", days.len())));
-        }
-
-        Ok(days)
+    let response = response.unwrap();
+    match response.status() {
+        StatusCode::OK => (),
+        StatusCode::SERVICE_UNAVAILABLE =>
+            return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit"))),
+        code =>
+            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
     }
+
+    let response = response.json::<APIResponse>().await;
+    if response.is_err() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
+    }
+
+    let response = response.unwrap();
+    if response.status != "OK" {
+        return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API responded with \"{}\" instead of \"OK\"", response.status)));
+    }
+    if response.days.is_none() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Sunrise API responded \"OK\" without any data")));
+    }
+
+    let days = response.days.unwrap();
+    if days.len() != 366 {
+        return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", days.len())));
+    }
+
+    Ok(days)
 }

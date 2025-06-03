@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use time::Time;
 use timer::year;
-use sunrise_api::SunriseAPI;
 use constants::CHECK_INTERVAL;
 
 #[tokio::main]
@@ -23,14 +22,14 @@ async fn main() {
     let year_timer = {
         // local: bremen, germany
         log::info!("requesting local data from API");
-        let local_api_days = SunriseAPI::new().request(53.1, 8.8).await.unwrap();
+        let local_api_days = sunrise_api::request(53.1, 8.8).await.unwrap();
 
         // avoid API rate limiting
-        tokio::time::sleep(std::time::Duration::from_millis(430)).await;
+        tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await;
 
         // natural: new caledonia
         log::info!("requesting natural data from API");
-        let natural_api_days = SunriseAPI::new().request(-21.3, 165.4).await.unwrap();
+        let natural_api_days = sunrise_api::request(-21.3, 165.4).await.unwrap();
 
         log::info!("averaging data");
         year::Timer::from_api_days_average(0.5, &local_api_days, &natural_api_days)
