@@ -37,6 +37,7 @@ impl Timer {
     }
 
     pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
+        #[derive(PartialEq)]
         struct LocalDay {
             length: Time,
             /// exactly in between sunrise and sunset
@@ -56,11 +57,29 @@ impl Timer {
             LocalDay { length, center }
         }).collect::<Vec<_>>();
 
-        let natural_day_lengths = natural_api_days.iter().map(|natural_item|
+        let mut natural_day_lengths = natural_api_days.iter().map(|natural_item|
             Time::from_hhmmss(&natural_item.day_length)
         ).collect::<Vec<_>>();
 
-        // TODO shift natural_day_lengths based on longest day
+        let local_max = local_days.iter().max_by(|a, b| a.length.cmp(&b.length)).unwrap();
+        let local_max_index = local_days.iter().position(|d| d == local_max).unwrap();
+
+        let natural_max = natural_day_lengths.iter().max().unwrap();
+        let natural_max_index = natural_day_lengths.iter().position(|t| t == natural_max).unwrap();
+
+        // shift natural day lengths to ensure
+        // longest natural day is at the date of the longest local day.
+        // this is especially useful if local and natural location are in different hemispheres.
+        // value is between -365 and 365.
+        #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+        let shift = local_max_index as i16 - natural_max_index as i16;
+        log::trace!("longest day: local = {local_max_index}, natural = {natural_max_index} => shift natural by {shift}");
+
+        if shift >= 0 {
+            natural_day_lengths.rotate_right(shift.try_into().unwrap());
+        } else {
+            natural_day_lengths.rotate_left(shift.abs().try_into().unwrap());
+        }
 
         let day_timers = local_days.iter()
             .zip(natural_day_lengths.iter())
