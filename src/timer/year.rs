@@ -2,7 +2,9 @@ use chrono::{DateTime, NaiveDate, Datelike, Utc};
 use chrono_tz::Tz;
 
 use super::day;
+use crate::time::Time;
 use crate::constants::TIMEZONE;
+use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timer {
@@ -21,6 +23,48 @@ impl Timer {
         let now = Utc::now().with_timezone(&TIMEZONE);
 
         &self.day_timers[Self::index(now)]
+    }
+
+    pub fn from_api_days(api_days: &[APIResponseDay]) -> Self {
+        todo!()
+    }
+
+    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
+        struct LocalDay {
+            length: Time,
+            /// exactly in between sunrise and sunset
+            center: Time,
+        }
+
+        let local_days = local_api_days.iter().map(|local_item| {
+            let length = Time::from_hhmmss(&local_item.day_length);
+            let center = {
+                let sunrise = Time::from_military(&local_item.sunrise);
+                let sunset = Time::from_military(&local_item.sunset);
+                ((sunset - sunrise) / 2.0) + sunrise
+            };
+            LocalDay { length, center }
+        }).collect::<Vec<_>>();
+
+        let natural_day_lengths = natural_api_days.iter().map(|natural_item|
+            Time::from_hhmmss(&natural_item.day_length)
+        ).collect::<Vec<_>>();
+
+        // TODO shift natural_day_lengths based on longest day
+
+        let day_timers = local_days.iter()
+            .zip(natural_day_lengths.iter())
+            .map(|(local_day, natural_day_length)| {
+                let averaged_day_length = (*natural_day_length * natural_factor)
+                    + (local_day.length * (1. - natural_factor));
+                let on  = local_day.center - (averaged_day_length / 2.);
+                let off = local_day.center + (averaged_day_length / 2.);
+                log::trace!("center: {}, local length: {}, natural length: {} => on: {}, off {}", local_day.center, local_day.length, natural_day_length, on, off);
+                day::Timer::new(on, off)
+            })
+            .collect::<Vec<_>>();
+
+        Self::new(day_timers.try_into().unwrap())
     }
 
     /// returns index of day timers to use for given moment in time

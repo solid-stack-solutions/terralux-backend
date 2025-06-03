@@ -8,6 +8,8 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 
 use time::Time;
+use timer::year;
+use sunrise_api::SunriseAPI;
 use constants::CHECK_INTERVAL;
 
 #[tokio::main]
@@ -18,13 +20,21 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME"))
     )).init();
 
-    log::info!("requesting year timer from API");
-    let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(
-        0.5, // natural factor
-        53.1, 8.8, // local: bremen, germany
-        -21.3, 165.4 // natural: new caledonia
-    ).await.unwrap();
-    log::info!("got year timer from API");
+    let year_timer = {
+        let sunrise_api = SunriseAPI::new();
+
+        // local: bremen, germany
+        log::info!("requesting local data from API");
+        let local_api_days = sunrise_api.request(53.1, 8.8).await.unwrap();
+
+        // natural: new caledonia
+        log::info!("requesting natural data from API");
+        let natural_api_days = sunrise_api.request(-21.3, 165.4).await.unwrap();
+
+        log::info!("averaging data");
+        year::Timer::from_api_days_average(0.5, &local_api_days, &natural_api_days)
+    };
+    log::info!("determined year timer");
     log::trace!("\n{}", year_timer);
 
     let year_timer = Arc::new(Mutex::new(Some(year_timer)));
