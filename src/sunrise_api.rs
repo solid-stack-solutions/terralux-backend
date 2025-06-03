@@ -1,5 +1,7 @@
 use reqwest::Client;
+use axum::http::StatusCode;
 
+use crate::web;
 use crate::time::Time;
 use crate::timer::{day, year};
 
@@ -33,7 +35,7 @@ struct ResponseItem {
 
 #[derive(Debug, serde::Deserialize)]
 struct Response {
-    results: Option<Vec<ResponseItem>>,
+    items: Option<Vec<ResponseItem>>,
     /// e.g. `"OK"`
     status: String,
 }
@@ -50,30 +52,38 @@ impl SunriseAPI {
     }
 
     /// result has exactly 366 elements
-    async fn request(&self, latitude: f32, longitude: f32) -> Result<Vec<ResponseItem>, ()> {
+    async fn request(&self, latitude: f32, longitude: f32) -> web::Response<Vec<ResponseItem>> {
         // request leap year to get 366 response days
         let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
 
         let response = self.client.get(url).send().await;
         if response.is_err() {
-            return Err(());
+            return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
         }
 
         let response = response.unwrap().json::<Response>().await;
         if response.is_err() {
-            return Err(());
+            return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
         }
 
         let response = response.unwrap();
-        if response.status != "OK" || response.results.is_none() || response.results.as_ref().unwrap().len() != 366 {
-            return Err(());
+        if response.status != "OK" {
+            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API responded with \"{}\" instead of \"OK\"", response.status)));
+        }
+        if response.items.is_none() {
+            return Err((StatusCode::BAD_GATEWAY, String::from("Sunrise API responded \"OK\" without any data")));
         }
 
-        Ok(response.results.unwrap())
+        let results = response.items.unwrap();
+        if results.len() != 366 {
+            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", results.len())));
+        }
+
+        Ok(results)
     }
 
     #[allow(clippy::large_stack_frames)]
-    pub async fn request_year_timer(&self, natural_factor: f32, local_latitude: f32, local_longitude: f32, natural_latitude: f32, natural_longitude: f32) -> Result<year::Timer, ()> {
+    pub async fn request_year_timer(&self, natural_factor: f32, local_latitude: f32, local_longitude: f32, natural_latitude: f32, natural_longitude: f32) -> web::Response<year::Timer> {
         struct LocalDay {
             length: Time,
             /// exactly in between sunrise and sunset

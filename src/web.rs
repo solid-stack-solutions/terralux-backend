@@ -7,7 +7,7 @@ use axum::{
 
 use crate::timer::year;
 
-type Response<T> = Result<T, (StatusCode, &'static str)>;
+pub type Response<T> = Result<T, (StatusCode, String)>;
 
 #[derive(
     Debug,
