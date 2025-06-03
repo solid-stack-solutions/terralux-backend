@@ -10,6 +10,8 @@ use crate::sunrise_api;
 use crate::timer::year;
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
+type StateYearTimer = Arc<Mutex<Option<year::Timer>>>;
+type StatePlug = Arc<Mutex<Option<Plug>>>;
 
 fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
     if condition {
@@ -61,7 +63,7 @@ struct PutConfigurationQuery {
     ),
 )]
 async fn put_configuration(
-    State(state): State<(Arc<Mutex<Option<year::Timer>>>, Arc<Mutex<Option<Plug>>>)>,
+    State(state): State<(StateYearTimer, StatePlug)>,
     Query(query): Query<PutConfigurationQuery>
 ) -> Response<&'static str> {
     bad_request_if(query.natural_factor < 0. || query.natural_factor > 1., "natural_factor must be between 0.0 and 1.0")?;
@@ -88,7 +90,7 @@ async fn put_configuration(
 }
 
 /// start webserver. never terminates.
-pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>, plug: Arc<Mutex<Option<Plug>>>) {
+pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
     use utoipa::OpenApi;
     use tokio::net::TcpListener;
     use utoipa_swagger_ui::SwaggerUi;
