@@ -39,7 +39,7 @@
         ]);
 
         # enable logging
-        RUST_LOG = "error,terralux_backend=trace";
+        RUST_LOG = "error,terralux_backend=debug";
         # fix rust-analyzer in vscode
         RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
       };

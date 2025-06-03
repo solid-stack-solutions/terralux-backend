@@ -5,36 +5,78 @@ use axum::{
     http::StatusCode
 };
 
+use crate::sunrise_api;
 use crate::timer::year;
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
+
+fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
+    if condition {
+        Err((StatusCode::BAD_REQUEST, String::from(message)))
+    } else {
+        Ok(())
+    }
+}
 
 #[derive(
     Debug,
     // from query parameters
     utoipa::IntoParams, serde::Deserialize,
 )]
-struct PutState {
+struct PutConfigurationQuery {
     /// Average sunrise/sunset times between local ones (0.0) and ones from the natural habitat (1.0)
     #[param(minimum = 0.0, maximum = 1.0)]
-    natural_factor: f32
+    natural_factor: f32,
+
+    /// Latitude of geographic coordinates of terrarium, from -90° (south) to 90° (north)
+    #[param(minimum = -90.0, maximum = 90.0)]
+    local_latitude: f32,
+
+    /// Longitude of geographic coordinates of terrarium, from -180° (west) to 180° (east)
+    #[param(minimum = -180.0, maximum = 180.0)]
+    local_longitude: f32,
+
+    /// Latitude of geographic coordinates of the animals natural habitat, from -90° (south) to 90° (north)
+    #[param(minimum = -90.0, maximum = 90.0)]
+    natural_latitude: f32,
+
+    /// Longitude of geographic coordinates of the animals natural habitat, from -180° (west) to 180° (east)
+    #[param(minimum = -180.0, maximum = 180.0)]
+    natural_longitude: f32,
 }
 
 #[utoipa::path(
-    put,
-    path = "/state",
-    params(PutState),
+    put, path = "/configuration",
+    params(PutConfigurationQuery),
     responses(
-        (status = 200, description = "Successfully put state"),
-        (status = 400, description = "Request did not match expected structure"),
+        (status = 200, description = "Successfully configured timers"),
+        (status = 400, description = "Query parameters did not match expected structure"),
+        (status = 429, description = "Reached sunrise API request rate limit"),
+        (status = 502, description = "Unexpected response from sunrise API"),
     ),
 )]
-async fn put_state(
+async fn put_configuration(
     State(state): State<Arc<Mutex<Option<year::Timer>>>>,
-    Query(put_state): Query<PutState>
+    Query(query): Query<PutConfigurationQuery>
 ) -> Response<&'static str> {
-    log::debug!("got natural factor {}", put_state.natural_factor);
-    Ok("response")
+    bad_request_if(query.natural_factor < 0. || query.natural_factor > 1., "natural_factor must be between 0.0 and 1.0")?;
+    bad_request_if(query.local_latitude < -90. || query.local_latitude > 90., "local_latitude must be between -90.0 and 90.0")?;
+    bad_request_if(query.local_longitude < -180. || query.local_longitude > 180., "local_longitude must be between -180.0 and 180.0")?;
+    bad_request_if(query.natural_latitude < -90. || query.natural_latitude > 90., "natural_latitude must be between -90.0 and 90.0")?;
+    bad_request_if(query.natural_longitude < -180. || query.natural_longitude > 180., "natural_longitude must be between -180.0 and 180.0")?;
+
+    let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
+
+    // avoid API rate limiting
+    tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await;
+
+    let natural_api_days = sunrise_api::request(query.natural_latitude, query.natural_longitude).await?;
+
+    let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
+    *state.lock().await = Some(year_timer);
+
+    log::info!("configured timers");
+    Ok("Successfully configured timers")
 }
 
 /// start webserver. never terminates.
@@ -51,7 +93,7 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
     #[openapi(
         paths(
             // functions with #[utoipa::path(...)]
-            put_state,
+            put_configuration,
         ),
         // enums/structs with #[derive(utoipa::ToSchema)]
         //components(schemas( ... ))
@@ -61,7 +103,7 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
     // configure routes
     let app = axum::Router::new()
         // api routes
-        .route("/state", put(put_state))
+        .route("/configuration", put(put_configuration))
             .with_state(Arc::clone(&year_timer))
 
         // temporarily redirect root to swagger ui

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 /// interval for checking if the current minute matches a timer
-pub const CHECK_INTERVAL: Duration = Duration::from_secs(5);
+pub const CHECK_INTERVAL: Duration = Duration::from_secs(15);
 
 /// timezone to use for timers
 pub const TIMEZONE: chrono_tz::Tz = chrono_tz::Europe::Berlin;
