@@ -44,8 +44,17 @@ impl Timer {
             center: Time,
         }
 
+        assert!(natural_factor >= 0.);
+        assert!(natural_factor <= 1.);
         assert_eq!(local_api_days.len(), 366);
         assert_eq!(natural_api_days.len(), 366);
+
+        // skip averaging in special cases
+        match natural_factor {
+            0. => return Self::from_api_days(local_api_days),
+            1. => return Self::from_api_days(natural_api_days),
+            _ => (),
+        }
 
         let local_days = local_api_days.iter().map(|local_item| {
             let length = Time::from_hhmmss(&local_item.day_length);
