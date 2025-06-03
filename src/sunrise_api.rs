@@ -33,6 +33,7 @@ pub struct APIResponseDay {
 
 #[derive(Debug, serde::Deserialize)]
 struct APIResponse {
+    #[serde(rename = "results")]
     days: Option<Vec<APIResponseDay>>,
     /// e.g. `"OK"`
     status: String,
