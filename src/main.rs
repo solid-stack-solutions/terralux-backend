@@ -19,13 +19,14 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME").replace('-', "_"))
     )).init();
 
+    let plug = Arc::new(Mutex::new(None));
     let year_timer = Arc::new(Mutex::new(None));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = Time::now() - Time::new(0, 1);
 
     // start webserver ("fire and forget" instead of "await")
-    tokio::spawn(web::start_server(Arc::clone(&year_timer)));
+    tokio::spawn(web::start_server(Arc::clone(&year_timer), Arc::clone(&plug)));
 
     loop {
         log::trace!("checking for new minute");
@@ -39,10 +40,10 @@ async fn main() {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer, turning plug on");
-                    plug::set_power(true).await.unwrap();
+                    let _ = plug.lock().await.as_ref().unwrap().set_power(true).await;
                 } else if now == *day_timer.off_time() {
                     log::info!("matched timer, turning plug off");
-                    plug::set_power(false).await.unwrap();
+                    let _ = plug.lock().await.as_ref().unwrap().set_power(false).await;
                 } else {
                     log::trace!("no timer matched");
                 }

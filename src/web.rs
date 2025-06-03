@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode
 };
 
+use crate::plug::Plug;
 use crate::sunrise_api;
 use crate::timer::year;
 
@@ -24,7 +25,11 @@ fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
     utoipa::IntoParams, serde::Deserialize,
 )]
 struct PutConfigurationQuery {
-    /// Average sunrise/sunset times between local ones (0.0) and ones from the natural habitat (1.0)
+    /// URL to Shelly smart plug compatible with [this API](https://shelly-api-docs.shelly.cloud/gen1/#shelly-plug-plugs-relay-0)
+    /// without a trailing slash, e.g. `http://192.168.178.123`
+    plug_url: String,
+
+    /// Average sunrise/sunset times between local ones (`0.0`) and ones from the natural habitat (`1.0`)
     #[param(minimum = 0.0, maximum = 1.0)]
     natural_factor: f32,
 
@@ -56,7 +61,7 @@ struct PutConfigurationQuery {
     ),
 )]
 async fn put_configuration(
-    State(state): State<Arc<Mutex<Option<year::Timer>>>>,
+    State(state): State<(Arc<Mutex<Option<year::Timer>>>, Arc<Mutex<Option<Plug>>>)>,
     Query(query): Query<PutConfigurationQuery>
 ) -> Response<&'static str> {
     bad_request_if(query.natural_factor < 0. || query.natural_factor > 1., "natural_factor must be between 0.0 and 1.0")?;
@@ -64,23 +69,26 @@ async fn put_configuration(
     bad_request_if(query.local_longitude < -180. || query.local_longitude > 180., "local_longitude must be between -180.0 and 180.0")?;
     bad_request_if(query.natural_latitude < -90. || query.natural_latitude > 90., "natural_latitude must be between -90.0 and 90.0")?;
     bad_request_if(query.natural_longitude < -180. || query.natural_longitude > 180., "natural_longitude must be between -180.0 and 180.0")?;
+    let plug = Plug::new(query.plug_url.clone()).await;
+    bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
+
+    let (state_year_timer, state_plug) = state;
+    *state_plug.lock().await = Some(plug.unwrap());
+    log::info!("configured plug url {}", query.plug_url);
 
     let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
-
-    // avoid API rate limiting
-    tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await;
-
+    tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
     let natural_api_days = sunrise_api::request(query.natural_latitude, query.natural_longitude).await?;
 
     let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
-    *state.lock().await = Some(year_timer);
-
+    *state_year_timer.lock().await = Some(year_timer);
     log::info!("configured timers");
+
     Ok("Successfully configured timers")
 }
 
 /// start webserver. never terminates.
-pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
+pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>, plug: Arc<Mutex<Option<Plug>>>) {
     use utoipa::OpenApi;
     use tokio::net::TcpListener;
     use utoipa_swagger_ui::SwaggerUi;
@@ -104,7 +112,7 @@ pub async fn start_server(year_timer: Arc<Mutex<Option<year::Timer>>>) {
     let app = axum::Router::new()
         // api routes
         .route("/configuration", put(put_configuration))
-            .with_state(Arc::clone(&year_timer))
+            .with_state((Arc::clone(&year_timer), Arc::clone(&plug)))
 
         // temporarily redirect root to swagger ui
         .route("/", get(|| async { Redirect::temporary("/swagger-ui") }))
