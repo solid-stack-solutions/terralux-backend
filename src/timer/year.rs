@@ -2,7 +2,9 @@ use chrono::{DateTime, NaiveDate, Datelike, Utc};
 use chrono_tz::Tz;
 
 use super::day;
+use crate::time::Time;
 use crate::constants::TIMEZONE;
+use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timer {
@@ -21,6 +23,85 @@ impl Timer {
         let now = Utc::now().with_timezone(&TIMEZONE);
 
         &self.day_timers[Self::index(now)]
+    }
+
+    pub fn from_api_days(api_days: &[APIResponseDay]) -> Self {
+        assert_eq!(api_days.len(), 366);
+
+        Self::new(api_days.iter().map(|day| {
+            day::Timer::new(
+                Time::from_military(&day.sunrise),
+                Time::from_military(&day.sunset)
+            )
+        }).collect::<Vec<_>>().try_into().unwrap())
+    }
+
+    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
+        #[derive(PartialEq)]
+        struct LocalDay {
+            length: Time,
+            /// exactly in between sunrise and sunset
+            center: Time,
+        }
+
+        assert!(natural_factor >= 0.);
+        assert!(natural_factor <= 1.);
+        assert_eq!(local_api_days.len(), 366);
+        assert_eq!(natural_api_days.len(), 366);
+
+        // skip averaging in special cases
+        match natural_factor {
+            0. => return Self::from_api_days(local_api_days),
+            1. => return Self::from_api_days(natural_api_days),
+            _ => (),
+        }
+
+        let local_days = local_api_days.iter().map(|local_item| {
+            let length = Time::from_hhmmss(&local_item.day_length);
+            let center = {
+                let sunrise = Time::from_military(&local_item.sunrise);
+                let sunset = Time::from_military(&local_item.sunset);
+                ((sunset - sunrise) / 2.0) + sunrise
+            };
+            LocalDay { length, center }
+        }).collect::<Vec<_>>();
+
+        let mut natural_day_lengths = natural_api_days.iter().map(|natural_item|
+            Time::from_hhmmss(&natural_item.day_length)
+        ).collect::<Vec<_>>();
+
+        let local_max = local_days.iter().max_by(|a, b| a.length.cmp(&b.length)).unwrap();
+        let local_max_index = local_days.iter().position(|d| d == local_max).unwrap();
+
+        let natural_max = natural_day_lengths.iter().max().unwrap();
+        let natural_max_index = natural_day_lengths.iter().position(|t| t == natural_max).unwrap();
+
+        // shift natural day lengths to ensure
+        // longest natural day is at the date of the longest local day.
+        // this is especially useful if local and natural location are in different hemispheres.
+        // value is between -365 and 365.
+        #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+        let shift = local_max_index as i16 - natural_max_index as i16;
+        log::debug!("longest day: local = {local_max_index}, natural = {natural_max_index} => shift natural by {shift}");
+
+        if shift >= 0 {
+            natural_day_lengths.rotate_right(shift.try_into().unwrap());
+        } else {
+            natural_day_lengths.rotate_left(shift.abs().try_into().unwrap());
+        }
+
+        let day_timers = local_days.iter()
+            .zip(natural_day_lengths.iter())
+            .map(|(local_day, natural_day_length)| {
+                let averaged_day_length = (*natural_day_length * natural_factor)
+                    + (local_day.length * (1. - natural_factor));
+                let on  = local_day.center - (averaged_day_length / 2.);
+                let off = local_day.center + (averaged_day_length / 2.);
+                day::Timer::new(on, off)
+            })
+            .collect::<Vec<_>>();
+
+        Self::new(day_timers.try_into().unwrap())
     }
 
     /// returns index of day timers to use for given moment in time

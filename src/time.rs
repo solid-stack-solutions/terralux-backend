@@ -1,4 +1,4 @@
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Time {
     /// between 0 and 23 
     hour: i8,
@@ -22,6 +22,12 @@ impl Time {
         Self::new(hour.parse().unwrap(), minute.parse().unwrap())
     }
 
+    /// from time string with format "HH:MM:SS"
+    pub fn from_hhmmss(hhmmss_time: &str) -> Self {
+        let parts = hhmmss_time.split(':').collect::<Vec<_>>();
+        Self::new(parts[0].parse().unwrap(), parts[1].parse().unwrap())
+    }
+
     pub fn now() -> Self {
         use chrono::{Utc, Timelike};
         use crate::constants::TIMEZONE;
@@ -32,6 +38,24 @@ impl Time {
             now.minute().try_into().unwrap(),
         )
     }
+
+    fn minutes(self) -> i16 {
+        i16::from(self.minute) + (i16::from(self.hour) * 60)
+    }
+
+    fn from_minutes(minutes: i16) -> Self {
+        // still in range of same day
+        assert!(minutes >= 0);
+        assert!(minutes < 24 * 60);
+
+        let hour = minutes / 60;
+        let minute = minutes - (hour * 60);
+
+        Self::new(
+            hour.try_into().unwrap(),
+            minute.try_into().unwrap()
+        )
+    }
 }
 
 impl std::fmt::Display for Time {
@@ -40,32 +64,53 @@ impl std::fmt::Display for Time {
     }
 }
 
+// order by total minutes
+impl Ord for Time {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.minutes().cmp(&other.minutes())
+    }
+}
+impl PartialOrd for Time {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl std::ops::Sub for Time {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        let negative_rhs = Self { hour: -rhs.hour, minute: -rhs.minute };
-        self + negative_rhs
+        let minutes_self = self.minutes();
+        let minutes_rhs  = rhs.minutes();
+        Self::from_minutes(minutes_self - minutes_rhs)
     }
 }
 
 impl std::ops::Add for Time {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        let total_minutes_self = i16::from(self.minute) + (i16::from(self.hour) * 60);
-        let total_minutes_rhs  = i16::from( rhs.minute) + (i16::from( rhs.hour) * 60);
-        let total_minutes = total_minutes_self + total_minutes_rhs;
+        let minutes_self = self.minutes();
+        let minutes_rhs  = rhs.minutes();
+        Self::from_minutes(minutes_self + minutes_rhs)
+    }
+}
 
-        // still in range of same day
-        assert!(total_minutes >= 0);
-        assert!(total_minutes < 24 * 60);
+impl std::ops::Div<f32> for Time {
+    type Output = Self;
+    fn div(self, rhs: f32) -> Self::Output {
+        let minutes_self = f32::from(self.minutes());
+        #[allow(clippy::cast_possible_truncation)]
+        let minutes = (minutes_self / rhs) as i16;
+        Self::from_minutes(minutes)
+    }
+}
 
-        let hour = total_minutes / 60;
-        let minute = total_minutes - (hour * 60);
-
-        Self::new(
-            hour.try_into().unwrap(),
-            minute.try_into().unwrap()
-        )
+impl std::ops::Mul<f32> for Time {
+    type Output = Self;
+    fn mul(self, rhs: f32) -> Self::Output {
+        let minutes_self = f32::from(self.minutes());
+        #[allow(clippy::cast_possible_truncation)]
+        let minutes = (minutes_self * rhs) as i16;
+        Self::from_minutes(minutes)
     }
 }
 
@@ -109,5 +154,21 @@ mod tests {
     #[test]
     fn from_military() {
         assert_eq!(Time::from_military("1612"), Time::new(16, 12));
+    }
+
+    #[test]
+    fn div() {
+        assert_eq!(Time::new(3, 20) / 2., Time::new(1, 40));
+    }
+
+    #[test]
+    fn mul() {
+        assert_eq!(Time::new(3, 20) * 1.2, Time::new(4, 0));
+    }
+
+    #[test]
+    fn from_hhmmss() {
+        assert_eq!(Time::from_hhmmss("18:42:02"), Time::new(18, 42));
+        assert_eq!(Time::from_hhmmss("18:42:59"), Time::new(18, 42));
     }
 }

@@ -1,85 +1,86 @@
 use reqwest::Client;
+use std::time::Duration;
+use axum::http::StatusCode;
 
-use crate::time::Time;
-use crate::timer::{day, year};
+use crate::web;
+
+/// minimum interval between API requests to avoid rate limiting
+pub const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
-struct ResponseItem {
+pub struct APIResponseDay {
     /// YYYY-MM-DD
-    date: String,
+    pub date: String,
     /// time in military format
-    sunrise: String,
+    pub sunrise: String,
     /// time in military format
-    sunset: String,
+    pub sunset: String,
     /// time in military format
-    first_light: Option<String>,
+    pub first_light: Option<String>,
     /// time in military format
-    last_light: Option<String>,
+    pub last_light: Option<String>,
     /// time in military format
-    dawn: String,
+    pub dawn: String,
     /// time in military format
-    dusk: String,
+    pub dusk: String,
     /// time in military format
-    solar_noon: String,
+    pub solar_noon: String,
     /// time in military format
-    golden_hour: String,
+    pub golden_hour: String,
     /// HH:MM:SS
-    day_length: String,
+    pub day_length: String,
     /// e.g. `"America/New_York"`, see <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
-    timezone: String,
-    utc_offset: i32,
+    pub timezone: String,
+    pub utc_offset: i32,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct Response {
-    results: Option<Vec<ResponseItem>>,
+struct APIResponse {
+    #[serde(rename = "results")]
+    days: Option<Vec<APIResponseDay>>,
     /// e.g. `"OK"`
     status: String,
 }
 
-pub struct SunriseAPI {
-    client: Client,
-}
+/// result has exactly 366 elements
+pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResponseDay>> {
+    // request leap year to get 366 response days
+    let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
 
-impl SunriseAPI {
-    pub fn new() -> Self {
-        Self {
-            client: Client::new(),
-        }
+    // reusing the client leads to hitting the rate limit a lot faster
+    // => create a new client for every request
+    let response = Client::new().get(url).send().await;
+    if response.is_err() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
     }
 
-    async fn request(&self, latitude: f32, longitude: f32) -> Result<[ResponseItem; 366], ()> {
-        // request leap year to get 366 response days
-        let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
-
-        let response = self.client.get(url).send().await;
-        if response.is_err() {
-            return Err(());
-        }
-
-        let response = response.unwrap().json::<Response>().await;
-        if response.is_err() {
-            return Err(());
-        }
-
-        let response = response.unwrap();
-        if response.status != "OK" || response.results.is_none() || response.results.as_ref().unwrap().len() != 366 {
-            return Err(());
-        }
-
-        Ok(response.results.unwrap().try_into().unwrap())
+    let response = response.unwrap();
+    match response.status() {
+        StatusCode::OK => (),
+        StatusCode::SERVICE_UNAVAILABLE =>
+            return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit"))),
+        code =>
+            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
     }
 
-    #[allow(clippy::large_stack_frames)]
-    pub async fn request_year_timer(&self, latitude: f32, longitude: f32) -> Result<year::Timer, ()> {
-        let response_items = self.request(latitude, longitude).await?;
-        let day_timers = response_items.iter().map(|day| {
-            day::Timer::new(
-                Time::from_military(&day.sunrise),
-                Time::from_military(&day.sunset)
-            )
-        }).collect::<Vec<_>>().try_into().unwrap();
-        Ok(year::Timer::new(day_timers))
+    let response = response.json::<APIResponse>().await;
+    if response.is_err() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
     }
+
+    let response = response.unwrap();
+    if response.status != "OK" {
+        return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API responded with \"{}\" instead of \"OK\"", response.status)));
+    }
+    if response.days.is_none() {
+        return Err((StatusCode::BAD_GATEWAY, String::from("Sunrise API responded \"OK\" without any data")));
+    }
+
+    let days = response.days.unwrap();
+    if days.len() != 366 {
+        return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", days.len())));
+    }
+
+    Ok(days)
 }
