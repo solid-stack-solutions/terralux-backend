@@ -1,5 +1,6 @@
 mod timer;
 mod constants;
+mod plug;
 mod sunrise_api;
 mod time;
 mod web;
@@ -38,8 +39,10 @@ async fn main() {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer, turning plug on");
+                    plug::set_power(true).await.unwrap();
                 } else if now == *day_timer.off_time() {
                     log::info!("matched timer, turning plug off");
+                    plug::set_power(false).await.unwrap();
                 } else {
                     log::trace!("no timer matched");
                 }
