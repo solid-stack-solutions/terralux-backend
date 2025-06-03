@@ -27,18 +27,24 @@ async fn main() {
     tokio::spawn(web::start_server(Arc::clone(&year_timer)));
 
     loop {
+        log::trace!("checking for new minute");
+
         let now = Time::now();
         if now != last_checked_time {
+            log::trace!("new minute detected");
 
             let year_timer = *year_timer.lock().await;
             if let Some(year_timer) = year_timer {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer, turning plug on");
-                }
-                if now == *day_timer.off_time() {
+                } else if now == *day_timer.off_time() {
                     log::info!("matched timer, turning plug off");
+                } else {
+                    log::trace!("no timer matched");
                 }
+            } else {
+                log::trace!("nothing to check, no timers configured");
             }
 
             last_checked_time = now;

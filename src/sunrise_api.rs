@@ -47,6 +47,7 @@ struct APIResponse {
 pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResponseDay>> {
     // request leap year to get 366 response days
     let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
+    log::debug!("requesting url for latitude {latitude} and longitude {longitude}: {url}");
 
     // reusing the client leads to hitting the rate limit a lot faster
     // => create a new client for every request
@@ -58,14 +59,18 @@ pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResp
     let response = response.unwrap();
     match response.status() {
         StatusCode::OK => (),
-        StatusCode::SERVICE_UNAVAILABLE =>
-            return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit"))),
+        StatusCode::SERVICE_UNAVAILABLE => {
+            log::warn!("sunrise API rate limit reached");
+            return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit")));
+        },
         code =>
             return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
     }
 
-    let response = response.json::<APIResponse>().await;
+    let response_text = response.text().await.unwrap();
+    let response = serde_json::from_str::<APIResponse>(&response_text);
     if response.is_err() {
+        log::warn!("failed to deserialize the following response: {}", response_text);
         return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
     }
 
@@ -82,5 +87,6 @@ pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResp
         return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", days.len())));
     }
 
+    log::debug!("got data for latitude {latitude} and longitude {longitude}");
     Ok(days)
 }

@@ -75,6 +75,7 @@ async fn put_configuration(
     let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
     *state.lock().await = Some(year_timer);
 
+    log::info!("configured timers");
     Ok("Successfully configured timers")
 }
 
