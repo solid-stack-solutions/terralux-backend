@@ -60,7 +60,16 @@ impl SunriseAPI {
             return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
         }
 
-        let response = response.unwrap().json::<APIResponse>().await;
+        let response = response.unwrap();
+        match response.status() {
+            StatusCode::OK => (),
+            StatusCode::SERVICE_UNAVAILABLE =>
+                return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit"))),
+            code =>
+                return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
+        }
+
+        let response = response.json::<APIResponse>().await;
         if response.is_err() {
             return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
         }
