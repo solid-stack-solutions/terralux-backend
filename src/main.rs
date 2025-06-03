@@ -19,7 +19,11 @@ async fn main() {
     )).init();
 
     log::info!("requesting year timer from API");
-    let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(-21.3, 165.4).await.unwrap();
+    let year_timer = sunrise_api::SunriseAPI::new().request_year_timer(
+        0.5, // natural factor
+        53.1, 8.8, // local: bremen, germany
+        -21.3, 165.4 // natural: new caledonia
+    ).await.unwrap();
     log::info!("got year timer from API");
     log::trace!("\n{}", year_timer);
 
