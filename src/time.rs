@@ -22,6 +22,22 @@ impl Time {
         Self::new(hour.parse().unwrap(), minute.parse().unwrap())
     }
 
+    /// from time string with format "HH:MM:SS"
+    pub fn from_hhmmss(hhmmss_time: &str) -> Self {
+        assert_eq!(hhmmss_time.len(), 8);
+        let parts = hhmmss_time.split(':').collect::<Vec<_>>();
+
+        let hour = parts[0].parse().unwrap();
+        let mut minute = parts[1].parse().unwrap();
+        let seconds = parts[2].parse::<i8>().unwrap();
+        
+        if seconds >= 30 {
+            minute += 1;
+        };
+
+        Self::new(hour, minute)
+    }
+
     pub fn now() -> Self {
         use chrono::{Utc, Timelike};
         use crate::constants::TIMEZONE;
@@ -146,5 +162,11 @@ mod tests {
     #[test]
     fn mul() {
         assert_eq!(Time::new(3, 20) * 1.2, Time::new(4, 0));
+    }
+
+    #[test]
+    fn from_hhmmss() {
+        assert_eq!(Time::from_hhmmss("18:42:02"), Time::new(18, 42));
+        assert_eq!(Time::from_hhmmss("18:42:59"), Time::new(18, 43));
     }
 }
