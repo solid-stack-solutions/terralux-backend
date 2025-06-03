@@ -73,7 +73,7 @@ impl Timer {
         // value is between -365 and 365.
         #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
         let shift = local_max_index as i16 - natural_max_index as i16;
-        log::trace!("longest day: local = {local_max_index}, natural = {natural_max_index} => shift natural by {shift}");
+        log::debug!("longest day: local = {local_max_index}, natural = {natural_max_index} => shift natural by {shift}");
 
         if shift >= 0 {
             natural_day_lengths.rotate_right(shift.try_into().unwrap());
@@ -88,7 +88,6 @@ impl Timer {
                     + (local_day.length * (1. - natural_factor));
                 let on  = local_day.center - (averaged_day_length / 2.);
                 let off = local_day.center + (averaged_day_length / 2.);
-                log::trace!("center: {}, local length: {}, natural length: {} => on: {}, off {}", local_day.center, local_day.length, natural_day_length, on, off);
                 day::Timer::new(on, off)
             })
             .collect::<Vec<_>>();

@@ -36,7 +36,6 @@ async fn main() {
         year::Timer::from_api_days_average(0.5, &local_api_days, &natural_api_days)
     };
     log::info!("determined year timer");
-    log::trace!("\n{}", year_timer);
 
     let year_timer = Arc::new(Mutex::new(Some(year_timer)));
 
