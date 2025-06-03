@@ -26,7 +26,14 @@ impl Timer {
     }
 
     pub fn from_api_days(api_days: &[APIResponseDay]) -> Self {
-        todo!()
+        assert_eq!(api_days.len(), 366);
+
+        Self::new(api_days.iter().map(|day| {
+            day::Timer::new(
+                Time::from_military(&day.sunrise),
+                Time::from_military(&day.sunset)
+            )
+        }).collect::<Vec<_>>().try_into().unwrap())
     }
 
     pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
@@ -35,6 +42,9 @@ impl Timer {
             /// exactly in between sunrise and sunset
             center: Time,
         }
+
+        assert_eq!(local_api_days.len(), 366);
+        assert_eq!(natural_api_days.len(), 366);
 
         let local_days = local_api_days.iter().map(|local_item| {
             let length = Time::from_hhmmss(&local_item.day_length);
