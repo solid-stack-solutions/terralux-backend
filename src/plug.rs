@@ -53,7 +53,7 @@ impl Plug {
 
         // about  5min for 10 linear increase interval retries +
         // about 25min for 25 1min interval retries = 35 retries
-        for retry in 1 ..= 5 {
+        for retry in 1 ..= 35 {
             // linear increase until maxing out at 60
             let seconds = (6 * retry).min(60);
             log::warn!("failed to set plugs power state, attempting retry {retry} in {seconds} seconds");
