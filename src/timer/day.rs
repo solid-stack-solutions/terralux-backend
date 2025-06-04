@@ -1,6 +1,6 @@
 use crate::time::Time;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
     /// time to turn the plug on
     on_time: Time,

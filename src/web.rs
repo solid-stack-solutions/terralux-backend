@@ -7,12 +7,13 @@ use axum::{
 };
 
 use crate::plug::Plug;
+use crate::state_file;
 use crate::sunrise_api;
 use crate::timer::year;
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
-type StateYearTimer = Arc<Mutex<Option<year::Timer>>>;
-type StatePlug = Arc<Mutex<Option<Plug>>>;
+pub type StateYearTimer = Arc<Mutex<Option<year::Timer>>>;
+pub type StatePlug = Arc<Mutex<Option<Plug>>>;
 
 fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
     if condition {
@@ -83,6 +84,8 @@ async fn put_configuration(
     let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
     *state_year_timer.lock().await = Some(year_timer);
     log::info!("configured timers");
+
+    state_file::write(state_plug.clone(), state_year_timer.clone());
 
     Ok("Successfully configured timers")
 }
