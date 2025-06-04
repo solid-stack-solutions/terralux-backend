@@ -76,7 +76,7 @@ async fn put_configuration(
 
     let (state_year_timer, state_plug) = state;
     *state_plug.lock().await = Some(plug.unwrap());
-    log::info!("configured plug url {}", query.plug_url);
+    log::info!("configured plug url: {}", query.plug_url);
 
     let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
     tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
