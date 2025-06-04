@@ -69,7 +69,7 @@ impl Plug {
         }
     }
 
-    pub const fn get_url(&self) -> &String {
-        &self.base_url
+    pub fn get_url(&self) -> &str {
+        self.base_url.as_str()
     }
 }
