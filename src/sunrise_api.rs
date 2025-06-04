@@ -1,4 +1,3 @@
-use reqwest::Client;
 use std::time::Duration;
 use axum::http::StatusCode;
 
@@ -47,11 +46,10 @@ struct APIResponse {
 pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResponseDay>> {
     // request leap year to get 366 response days
     let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
-    log::debug!("requesting url for latitude {latitude} and longitude {longitude}: {url}");
+    log::debug!("requesting latitude {latitude} and longitude {longitude}: {url}");
 
-    // reusing the client leads to hitting the rate limit a lot faster
-    // => create a new client for every request
-    let response = Client::new().get(url).send().await;
+    // avoid reusing a reqwest::Client, as it leads to hitting the API's rate limit a lot faster
+    let response = reqwest::get(url).await;
     if response.is_err() {
         return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
     }
@@ -87,6 +85,5 @@ pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResp
         return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API response had data for {} instead of 366 days", days.len())));
     }
 
-    log::debug!("got data for latitude {latitude} and longitude {longitude}");
     Ok(days)
 }

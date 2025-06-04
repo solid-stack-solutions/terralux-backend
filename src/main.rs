@@ -1,5 +1,6 @@
 mod timer;
 mod constants;
+mod plug;
 mod sunrise_api;
 mod time;
 mod web;
@@ -18,13 +19,18 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME").replace('-', "_"))
     )).init();
 
+    if cfg!(feature = "mock_plug") {
+        log::info!("mock_plug feature detected, mocking requests to smart plug");
+    }
+
+    let plug = Arc::new(Mutex::new(None));
     let year_timer = Arc::new(Mutex::new(None));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = Time::now() - Time::new(0, 1);
 
     // start webserver ("fire and forget" instead of "await")
-    tokio::spawn(web::start_server(Arc::clone(&year_timer)));
+    tokio::spawn(web::start_server(Arc::clone(&year_timer), Arc::clone(&plug)));
 
     loop {
         log::trace!("checking for new minute");
@@ -38,8 +44,10 @@ async fn main() {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer, turning plug on");
+                    let _ = plug.lock().await.as_ref().unwrap().set_power(true).await;
                 } else if now == *day_timer.off_time() {
                     log::info!("matched timer, turning plug off");
+                    let _ = plug.lock().await.as_ref().unwrap().set_power(false).await;
                 } else {
                     log::trace!("no timer matched");
                 }
