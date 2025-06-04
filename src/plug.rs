@@ -1,6 +1,7 @@
 //! for shelly smart plugs compatible with the following API <https://shelly-api-docs.shelly.cloud/gen1/#shelly-plug-plugs-relay-0>
 
 use reqwest::StatusCode;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Error {
@@ -42,6 +43,29 @@ impl Plug {
             StatusCode::OK => Ok(()),
             code => Err(Error::UnexpectedStatusCode(code))
         }
+    }
+
+    /// retry on error for about 30min, with increasing interval between requests (up to 1min)
+    pub async fn set_power_with_retry(&self, power: bool) {
+        if self.set_power(power).await.is_ok() {
+            return;
+        }
+
+        // about  5min for 10 linear increase interval retries +
+        // about 25min for 25 1min interval retries = 35 retries
+        for retry in 1 ..= 5 {
+            // linear increase until maxing out at 60
+            let seconds = (6 * retry).min(60);
+            log::warn!("failed to set plugs power state, attempting retry {retry} in {seconds} seconds");
+            tokio::time::sleep(Duration::from_secs(seconds)).await;
+
+            if self.set_power(power).await.is_ok() {
+                log::info!("succeeded to set plugs power state after {retry} retries");
+                return;
+            }
+        }
+
+        log::warn!("failed to set plugs power state after max retries");
     }
 
     pub async fn get_power(&self) -> Result<bool, Error> {

@@ -44,10 +44,10 @@ async fn main() {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer, turning plug on");
-                    let _ = plug.lock().await.as_ref().unwrap().set_power(true).await;
+                    plug.lock().await.as_ref().unwrap().set_power_with_retry(true).await;
                 } else if now == *day_timer.off_time() {
                     log::info!("matched timer, turning plug off");
-                    let _ = plug.lock().await.as_ref().unwrap().set_power(false).await;
+                    plug.lock().await.as_ref().unwrap().set_power_with_retry(false).await;
                 } else {
                     log::trace!("no timer matched");
                 }
