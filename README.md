@@ -11,8 +11,6 @@ git clone https://github.com/solid-stack-solutions/terralux-backend
 cd terralux-backend
 # build and run
 cargo run
-# build and run with more logging
-RUST_LOG=terralux_backend=trace cargo run
 ```
 ### Using [Nix Flakes](https://wiki.nixos.org/wiki/Flakes)
 ```sh
@@ -22,4 +20,13 @@ nix run github:solid-stack-solutions/terralux-backend
 git clone https://github.com/solid-stack-solutions/terralux-backend
 cd terralux-backend
 nix run
+```
+
+## Development
+
+```sh
+# build and run while mocking connection to smart plug
+cargo run -F mock_plug
+# build and run with more logging
+RUST_LOG=terralux_backend=trace cargo run
 ```

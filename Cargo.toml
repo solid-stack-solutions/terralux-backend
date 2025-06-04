@@ -3,6 +3,11 @@ name = "terralux-backend"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+# mock connection to smart plug
+# use like `cargo run -F mock_plug`
+mock_plug = []
+
 [dependencies]
 axum = "0.7" # webserver
 reqwest = { version = "0.12", features = ["json"] } # make http requests

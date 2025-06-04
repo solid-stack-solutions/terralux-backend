@@ -23,8 +23,13 @@ impl Plug {
     }
 
     pub async fn set_power(&self, power: bool) -> Result<(), Error> {
-        let base_url = &self.base_url;
         let turn = if power { "on" } else { "off" };
+        if cfg!(feature = "mock_plug") {
+            log::debug!("mocking plug response: turning plug {turn}");
+            return Ok(())
+        }
+
+        let base_url = &self.base_url;
         let url = format!("{base_url}/relay/0?turn={turn}");
         log::debug!("requesting url: {url}");
 
@@ -40,6 +45,11 @@ impl Plug {
     }
 
     pub async fn get_power(&self) -> Result<bool, Error> {
+        if cfg!(feature = "mock_plug") {
+            log::debug!("mocking plug response: plug is off");
+            return Ok(false)
+        }
+
         let base_url = &self.base_url;
         let url = format!("{base_url}/relay/0");
         log::debug!("requesting url: {url}");

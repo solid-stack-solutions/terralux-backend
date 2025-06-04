@@ -19,6 +19,10 @@ async fn main() {
             format!("error,{}=info", env!("CARGO_PKG_NAME").replace('-', "_"))
     )).init();
 
+    if cfg!(feature = "mock_plug") {
+        log::info!("mock_plug feature detected, mocking requests to smart plug");
+    }
+
     let plug = Arc::new(Mutex::new(None));
     let year_timer = Arc::new(Mutex::new(None));
 
