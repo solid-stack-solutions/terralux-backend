@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 pub enum Error {
     /// e.g. when url can't be reached
     SendingRequest,
-    UnexpectedStatusCode,
+    UnexpectedStatusCode(StatusCode),
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl Plug {
 
         match response.unwrap().status() {
             StatusCode::OK => Ok(()),
-            _ => Err(Error::UnexpectedStatusCode)
+            code => Err(Error::UnexpectedStatusCode(code))
         }
     }
 
@@ -65,7 +65,11 @@ impl Plug {
                 let json = response.json::<serde_json::Value>().await.unwrap();
                 Ok(json["ison"].as_bool().unwrap())
             },
-            _ => Err(Error::UnexpectedStatusCode)
+            code => Err(Error::UnexpectedStatusCode(code))
         }
+    }
+
+    pub const fn get_url(&self) -> &String {
+        &self.base_url
     }
 }

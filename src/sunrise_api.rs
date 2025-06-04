@@ -51,7 +51,7 @@ pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResp
     // avoid reusing a reqwest::Client, as it leads to hitting the API's rate limit a lot faster
     let response = reqwest::get(url).await;
     if response.is_err() {
-        return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API request")));
+        return Err((StatusCode::BAD_GATEWAY, String::from("Error while sending sunrise API HTTP request")));
     }
 
     let response = response.unwrap();
