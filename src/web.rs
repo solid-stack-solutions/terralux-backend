@@ -2,7 +2,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use axum::{
     extract::{Query, State},
-    http::StatusCode
+    http::StatusCode,
+    Json,
 };
 
 use crate::plug::Plug;
@@ -21,11 +22,8 @@ fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
     }
 }
 
-#[derive(
-    Debug,
-    // from query parameters
-    utoipa::IntoParams, serde::Deserialize,
-)]
+// from query parameters
+#[derive(utoipa::IntoParams, serde::Deserialize)]
 struct PutConfigurationQuery {
     /// URL to Shelly smart plug compatible with [this API](https://shelly-api-docs.shelly.cloud/gen1/#shelly-plug-plugs-relay-0)
     /// without a trailing slash, e.g. `http://192.168.178.123`
@@ -89,6 +87,87 @@ async fn put_configuration(
     Ok("Successfully configured timers")
 }
 
+// from query parameters
+#[derive(utoipa::IntoParams, serde::Deserialize)]
+struct PutPlugPowerQuery {
+    /// Whether to turn the plug on (`true`) or off (`false`)
+    power: bool,
+}
+
+#[utoipa::path(
+    put, path = "/plug/power",
+    params(PutPlugPowerQuery),
+    responses(
+        (status = 200, description = "Successfully set plugs power state"),
+        (status = 400, description = "Query parameters did not match expected structure"),
+        (status = 409, description = "Plug not yet configured"),
+        (status = 502, description = "Unexpected response from plug"),
+    ),
+)]
+#[allow(clippy::significant_drop_tightening)]
+async fn put_plug_power(
+    State(state_plug): State<StatePlug>,
+    Query(query): Query<PutPlugPowerQuery>
+) -> Response<String> {
+    use crate::plug::Error;
+
+    let state_plug = state_plug.lock().await;
+    if state_plug.is_none() {
+        return Err((StatusCode::CONFLICT, String::from("Plug not yet configured, consider calling /configuration first")));
+    }
+
+    let plug = state_plug.as_ref().unwrap();
+    match plug.set_power(query.power).await {
+        Ok(()) => Ok(format!("Successfully turned plug {}", if query.power { "on" } else { "off" })),
+        Err(error) => {
+            let message = match error {
+                Error::SendingRequest => format!("Error while sending HTTP request to plug, make sure it's available on {}", plug.get_url()),
+                Error::UnexpectedStatusCode(code) => format!("Plug unexpectedly responded with HTTP status code {code}"),
+            };
+            Err((StatusCode::BAD_GATEWAY, message))
+        }
+    }
+}
+
+// as json response
+#[derive(utoipa::ToSchema, serde::Serialize)]
+struct GetPlugPowerResponse {
+    /// Whether the plug is on (`true`) or off (`false`)
+    power: bool,
+}
+
+#[utoipa::path(
+    get, path = "/plug/power",
+    responses(
+        (status = 200, description = "Got plugs power state (`true` meaning \"on\" and `false` meaning \"off\")", body = GetPlugPowerResponse),
+        (status = 409, description = "Plug not yet configured"),
+        (status = 502, description = "Unexpected response from plug"),
+    ),
+)]
+#[allow(clippy::significant_drop_tightening)]
+async fn get_plug_power(
+    State(state_plug): State<StatePlug>
+) -> Response<Json<GetPlugPowerResponse>> {
+    use crate::plug::Error;
+
+    let state_plug = state_plug.lock().await;
+    if state_plug.is_none() {
+        return Err((StatusCode::CONFLICT, String::from("Plug not yet configured, consider calling /configuration first")));
+    }
+
+    let plug = state_plug.as_ref().unwrap();
+    match plug.get_power().await {
+        Ok(power) => Ok(Json(GetPlugPowerResponse { power })),
+        Err(error) => {
+            let message = match error {
+                Error::SendingRequest => format!("Error while sending HTTP request to plug, make sure it's available on {}", plug.get_url()),
+                Error::UnexpectedStatusCode(code) => format!("Plug unexpectedly responded with HTTP status code {code}"),
+            };
+            Err((StatusCode::BAD_GATEWAY, message))
+        }
+    }
+}
+
 /// start webserver. never terminates.
 pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
     use utoipa::OpenApi;
@@ -100,14 +179,12 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
 
     // set up utoipa swagger ui
     #[derive(OpenApi)]
-    #[openapi(
-        paths(
-            // functions with #[utoipa::path(...)]
-            put_configuration,
-        ),
-        // enums/structs with #[derive(utoipa::ToSchema)]
-        //components(schemas( ... ))
-    )]
+    #[openapi(paths(
+        // functions with #[utoipa::path(...)]
+        put_configuration,
+        put_plug_power,
+        get_plug_power,
+    ))]
     struct ApiDoc;
 
     // configure routes
@@ -115,6 +192,10 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
         // api routes
         .route("/configuration", put(put_configuration))
             .with_state((Arc::clone(&year_timer), Arc::clone(&plug)))
+        .route("/plug/power", put(put_plug_power))
+            .with_state(Arc::clone(&plug))
+        .route("/plug/power", get(get_plug_power))
+            .with_state(Arc::clone(&plug))
 
         // temporarily redirect root to swagger ui
         .route("/", get(|| async { Redirect::temporary("/swagger-ui") }))
