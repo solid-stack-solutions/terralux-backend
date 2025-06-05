@@ -27,7 +27,12 @@ nix run
 ```sh
 # build and run while mocking connection to smart plug
 cargo run -F mock_plug
-# build and run with more logging
+
+### build and run with more logging
+# in posix-compliant shells like bash you can do the following
+# to set the environment variable RUST_LOG to a value like
+# "terralux_backend=debug" just for executing one command (cargo run).
+# on windows using cmd or powershell you might need different syntax.
 RUST_LOG=terralux_backend=debug cargo run # more logging
 RUST_LOG=terralux_backend=trace cargo run # too much logging
 ```
