@@ -28,5 +28,6 @@ nix run
 # build and run while mocking connection to smart plug
 cargo run -F mock_plug
 # build and run with more logging
-RUST_LOG=terralux_backend=trace cargo run
+RUST_LOG=terralux_backend=debug cargo run # more logging
+RUST_LOG=terralux_backend=trace cargo run # too much logging
 ```
