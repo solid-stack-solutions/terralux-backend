@@ -30,13 +30,24 @@ impl Time {
 
     pub fn now() -> Self {
         use chrono::{Utc, Timelike};
-        use crate::constants::TIMEZONE;
+        use crate::constants;
 
-        let now = Utc::now().with_timezone(&TIMEZONE);
-        Self::new(
-            now.hour().try_into().unwrap(),
-            now.minute().try_into().unwrap(),
-        )
+        let now = Utc::now().with_timezone(&constants::TIMEZONE);
+
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "demo_mode")] {
+                // accelerate flow of time
+                let seconds = f64::from(now.num_seconds_from_midnight());
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                let minutes = (seconds / constants::SECONDS_PER_MINUTE) as u32 % (24 * 60);
+                Self::from_minutes(minutes.try_into().unwrap())
+            } else {
+                Self::new(
+                    now.hour().try_into().unwrap(),
+                    now.minute().try_into().unwrap(),
+                )
+            }
+        }
     }
 
     fn minutes(self) -> i16 {
