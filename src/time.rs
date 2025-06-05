@@ -1,4 +1,4 @@
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Time {
     /// between 0 and 23 
     hour: i8,

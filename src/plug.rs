@@ -10,7 +10,7 @@ pub enum Error {
     UnexpectedStatusCode(StatusCode),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Plug {
     base_url: String,
 }

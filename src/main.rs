@@ -1,6 +1,7 @@
 mod timer;
 mod constants;
 mod plug;
+mod state_file;
 mod sunrise_api;
 mod time;
 mod web;
@@ -23,8 +24,12 @@ async fn main() {
         log::info!("mock_plug feature detected, mocking requests to smart plug");
     }
 
-    let plug = Arc::new(Mutex::new(None));
-    let year_timer = Arc::new(Mutex::new(None));
+    let (plug, year_timer) = match state_file::read() {
+        Some((plug, year_timer)) => (Some(plug), (Some(year_timer))),
+        None => (None, None),
+    };
+    let plug = Arc::new(Mutex::new(plug));
+    let year_timer = Arc::new(Mutex::new(year_timer));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = Time::now() - Time::new(0, 1);

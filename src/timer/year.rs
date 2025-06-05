@@ -6,9 +6,10 @@ use crate::time::Time;
 use crate::constants::TIMEZONE;
 use crate::sunrise_api::APIResponseDay;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
     /// includes leap day
+    #[serde(with = "serde_big_array::BigArray")]
     day_timers: [day::Timer; 366]
 }
 

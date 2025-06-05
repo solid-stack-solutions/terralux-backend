@@ -10,8 +10,9 @@ mock_plug = []
 
 [dependencies]
 axum = "0.7" # webserver
+dirs-next = "2.0.0" # platform-specific standard paths
 reqwest = { version = "0.12", features = ["json"] } # make http requests
-tokio = { version = "1.42", features = ["rt-multi-thread", "macros"] } # async runtime
+tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime
 # logging
 log = "0.4.27" # api
 env_logger = "0.11.8" # implementation
@@ -19,8 +20,9 @@ env_logger = "0.11.8" # implementation
 chrono    = "0.4"
 chrono-tz = "0.10"
 # (de)serialize to/from json
-serde      = "1.0"
+serde = "1.0"
 serde_json = "1.0"
+serde-big-array = "0.5.1" # for arrays with >32 elements
 # swagger ui / openapi documentation support for axum
 utoipa = { version = "5.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
