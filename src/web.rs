@@ -178,9 +178,10 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
     use utoipa::OpenApi;
     use tokio::net::TcpListener;
     use utoipa_swagger_ui::SwaggerUi;
+    use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     use axum::{response::Redirect, routing::{get, put}};
 
-    use crate::constants::net::{LOCALHOST, PORT};
+    use crate::constants::PORT;
 
     // set up utoipa swagger ui
     #[derive(OpenApi)]
@@ -208,18 +209,18 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
         .merge(SwaggerUi::new("/swagger-ui")
             .url("/openapi.json", ApiDoc::openapi()));
 
-    let address = std::net::SocketAddr::new(LOCALHOST, PORT);
-    log::info!("starting server on http://{address}");
-
+    // visible on localhost and from outside
+    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), PORT);
     let tcp_listener = TcpListener::bind(address).await;
     if let Err(ref error) = tcp_listener {
         if error.kind() == std::io::ErrorKind::AddrInUse {
-            log::error!("address http://{address} is already in use, is this server already running?");
+            log::error!("port {PORT} is already in use, is this server already running?");
             std::process::exit(1);
         } else {
             panic!("{error:?}");
         }
     }
 
+    log::info!("listening on port {PORT} on all interfaces (local access: http://localhost:{PORT})");
     axum::serve(tcp_listener.unwrap(), app).await.unwrap();
 }
