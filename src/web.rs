@@ -74,13 +74,14 @@ async fn put_configuration(
     let plug = Plug::new(query.plug_url.clone()).await;
     bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
 
-    let (state_year_timer, state_plug) = state;
-    *state_plug.lock().await = Some(plug.unwrap());
-    log::info!("configured plug url: {}", query.plug_url);
-
     let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
     tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
     let natural_api_days = sunrise_api::request(query.natural_latitude, query.natural_longitude).await?;
+
+    let (state_year_timer, state_plug) = state;
+
+    *state_plug.lock().await = Some(plug.unwrap());
+    log::info!("configured plug url: {}", query.plug_url);
 
     let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
     *state_year_timer.lock().await = Some(year_timer);
