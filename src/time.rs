@@ -28,15 +28,30 @@ impl Time {
         Self::new(parts[0].parse().unwrap(), parts[1].parse().unwrap())
     }
 
+    #[allow(clippy::items_after_statements)]
     pub fn now() -> Self {
-        use chrono::{Utc, Timelike};
         use crate::constants::TIMEZONE;
 
-        let now = Utc::now().with_timezone(&TIMEZONE);
-        Self::new(
-            now.hour().try_into().unwrap(),
-            now.minute().try_into().unwrap(),
-        )
+        let now = chrono::Utc::now().with_timezone(&TIMEZONE);
+
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "demo_mode")] {
+                // accelerate flow of time
+                use crate::constants::MILLISECONDS_PER_MINUTE;
+                let minutes = (now.timestamp_millis() / i64::from(MILLISECONDS_PER_MINUTE)) % (24 * 60);
+                Self::from_minutes(minutes.try_into().unwrap())
+            } else {
+                use chrono::Timelike;
+                Self::new(
+                    now.hour().try_into().unwrap(),
+                    now.minute().try_into().unwrap(),
+                )
+            }
+        }
+    }
+
+    pub const fn minute(self) -> i8 {
+        self.minute
     }
 
     fn minutes(self) -> i16 {

@@ -27,6 +27,8 @@ nix run
 ```sh
 # build and run while mocking connection to smart plug
 cargo run -F mock_plug
+# build and run with accelerated flow of time
+cargo run -F demo_mode
 
 ### build and run with more logging
 # in posix-compliant shells like bash you can do the following

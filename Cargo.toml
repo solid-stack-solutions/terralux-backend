@@ -7,9 +7,12 @@ edition = "2021"
 # mock connection to smart plug
 # use like `cargo run -F mock_plug`
 mock_plug = []
+# accelerate flow of time for presentation
+demo_mode = []
 
 [dependencies]
 axum = "0.7" # webserver
+cfg-if = "1.0.0" # better `if cfg!(...)`
 dirs-next = "2.0.0" # platform-specific standard paths
 reqwest = { version = "0.12", features = ["json"] } # make http requests
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime

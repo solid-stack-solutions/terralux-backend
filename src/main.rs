@@ -24,6 +24,13 @@ async fn main() {
         log::info!("mock_plug feature detected, mocking requests to smart plug");
     }
 
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "demo_mode")] {
+            log::info!("demo_mode feature detected, accelerating flow of time: {}min (real) => 24h (simulated)",
+                constants::MINUTES_PER_DAY);
+        }
+    }
+
     let (plug, year_timer) = match state_file::read() {
         Some((plug, year_timer)) => (Some(plug), (Some(year_timer))),
         None => (None, None),
@@ -42,16 +49,20 @@ async fn main() {
 
         let now = Time::now();
         if now != last_checked_time {
-            log::trace!("new minute detected");
+            if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
+                log::info!("it is {}", now);
+            } else {
+                log::trace!("new minute detected");
+            }
 
             let year_timer = *year_timer.lock().await;
             if let Some(year_timer) = year_timer {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
-                    log::info!("matched timer, turning plug on");
+                    log::info!("matched timer for {now}, turning plug on");
                     plug.lock().await.as_ref().unwrap().set_power_with_retry(true).await;
                 } else if now == *day_timer.off_time() {
-                    log::info!("matched timer, turning plug off");
+                    log::info!("matched timer for {now}, turning plug off");
                     plug.lock().await.as_ref().unwrap().set_power_with_retry(false).await;
                 } else {
                     log::trace!("no timer matched");
