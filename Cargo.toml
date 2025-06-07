@@ -14,8 +14,11 @@ demo_mode = []
 axum = "0.7" # webserver
 cfg-if = "1.0.0" # better `if cfg!(...)`
 dirs-next = "2.0.0" # platform-specific standard paths
-reqwest = { version = "0.12", features = ["json"] } # make http requests
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime
+# make http requests
+# native-tls-alpn feature is somehow necessary to get useful responses
+# from sunrisesunset.io when running inside a docker container
+reqwest = { version = "0.12", features = ["json", "native-tls-alpn"] }
 # logging
 log = "0.4.27" # api
 env_logger = "0.11.8" # implementation
