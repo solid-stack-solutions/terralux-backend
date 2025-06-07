@@ -12,6 +12,15 @@ cd terralux-backend
 # build and run
 cargo run
 ```
+
+### Using [Docker](https://www.docker.com/)
+```sh
+git clone https://github.com/solid-stack-solutions/terralux-backend
+cd terralux-backend
+docker build -t terralux-backend:latest .
+docker run -p 5000:5000 terralux-backend:latest
+```
+
 ### Using [Nix Flakes](https://wiki.nixos.org/wiki/Flakes)
 ```sh
 # option 1: fully automatic

@@ -55,17 +55,18 @@ pub async fn request(latitude: f32, longitude: f32) -> web::Response<Vec<APIResp
     }
 
     let response = response.unwrap();
-    match response.status() {
+    let response_status = response.status();
+    let response_text = response.text().await.unwrap();
+    match response_status {
         StatusCode::OK => (),
         StatusCode::SERVICE_UNAVAILABLE => {
             log::warn!("sunrise API rate limit reached");
             return Err((StatusCode::TOO_MANY_REQUESTS, String::from("Reached sunrise API request rate limit")));
         },
         code =>
-            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with HTTP status code {code}"))),
+            return Err((StatusCode::BAD_GATEWAY, format!("Sunrise API unexpectedly responded with {code}: {response_text}"))),
     }
 
-    let response_text = response.text().await.unwrap();
     let response = serde_json::from_str::<APIResponse>(&response_text);
     if response.is_err() {
         log::warn!("failed to deserialize the following response: {}", response_text);
