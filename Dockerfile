@@ -8,9 +8,7 @@ RUN cargo install --path .
 FROM debian:bookworm-slim
 
 # required by reqwest
-RUN apt-get update
-RUN apt-get install -y libssl3 ca-certificates
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/cargo/bin/terralux-backend /usr/local/bin/terralux-backend
 EXPOSE 5000
