@@ -1,10 +1,12 @@
 use crate::time::Time;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, utoipa::ToSchema, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
-    /// time to turn the plug on
+    /// Time to turn the plug on
+    #[schema(default = json!(Time::new(8, 0)))]
     on_time: Time,
-    /// time to turn the plug off
+    /// Time to turn the plug off
+    #[schema(default = json!(Time::new(18, 0)))]
     off_time: Time,
 }
 

@@ -9,7 +9,7 @@ use axum::{
 use crate::plug::Plug;
 use crate::state_file;
 use crate::sunrise_api;
-use crate::timer::year;
+use crate::timer::{day, year};
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
 pub type StateYearTimer = Arc<Mutex<Option<year::Timer>>>;
@@ -90,6 +90,22 @@ async fn put_configuration(
     state_file::write(state_plug.clone(), state_year_timer.clone());
 
     Ok("Successfully configured timers")
+}
+
+#[utoipa::path(
+    get, path = "/configuration/today",
+    responses(
+        (status = 200, description = "Got todays configuration", body = day::Timer),
+        (status = 409, description = "Not yet configured"),
+    ),
+)]
+async fn get_configuration_today(
+    State(state_year_timer): State<StateYearTimer>
+) -> Response<Json<day::Timer>> {
+    state_year_timer.lock().await.as_ref().map_or_else(
+        || Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first"))),
+        |year_timer| Ok(Json(*year_timer.for_today()))
+    )
 }
 
 // from query parameters
@@ -188,6 +204,7 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
     #[openapi(paths(
         // functions with #[utoipa::path(...)]
         put_configuration,
+        get_configuration_today,
         put_plug_power,
         get_plug_power,
     ))]
@@ -198,6 +215,8 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
         // api routes
         .route("/configuration", put(put_configuration))
             .with_state((Arc::clone(&year_timer), Arc::clone(&plug)))
+        .route("/configuration/today", get(get_configuration_today))
+            .with_state(Arc::clone(&year_timer))
         .route("/plug/power", put(put_plug_power))
             .with_state(Arc::clone(&plug))
         .route("/plug/power", get(get_plug_power))

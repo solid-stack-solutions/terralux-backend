@@ -1,8 +1,10 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, utoipa::ToSchema, serde::Serialize, serde::Deserialize)]
 pub struct Time {
-    /// between 0 and 23 
+    /// Between 0 and 23 
+    #[schema(minimum = 0, maximum = 23)]
     hour: i8,
-    /// between 0 and 59 
+    /// Between 0 and 59 
+    #[schema(minimum = 0, maximum = 59)]
     minute: i8,
 }
 
