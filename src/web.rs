@@ -102,12 +102,10 @@ async fn put_configuration(
 async fn get_configuration_today(
     State(state_year_timer): State<StateYearTimer>
 ) -> Response<Json<day::Timer>> {
-    let state_year_timer = state_year_timer.lock().await;
-    if state_year_timer.is_none() {
-        return Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first")));
-    }
-
-    Ok(Json(*state_year_timer.as_ref().unwrap().for_today()))
+    state_year_timer.lock().await.as_ref().map_or_else(
+        || Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first"))),
+        |year_timer| Ok(Json(*year_timer.for_today()))
+    )
 }
 
 // from query parameters
