@@ -50,11 +50,9 @@ impl Timer {
         assert_eq!(local_api_days.len(), 366);
         assert_eq!(natural_api_days.len(), 366);
 
-        // skip averaging in special cases
-        match natural_factor {
-            0. => return Self::from_api_days(local_api_days),
-            1. => return Self::from_api_days(natural_api_days),
-            _ => (),
+        // skip averaging if possible
+        if natural_factor == 0. {
+            return Self::from_api_days(local_api_days);
         }
 
         let local_days = local_api_days.iter().map(|local_item| {
