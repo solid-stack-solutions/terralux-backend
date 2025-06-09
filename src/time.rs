@@ -1,3 +1,5 @@
+use chrono_tz::Tz;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, utoipa::ToSchema, serde::Serialize, serde::Deserialize)]
 pub struct Time {
     /// Between 0 and 23 
@@ -31,10 +33,8 @@ impl Time {
     }
 
     #[allow(clippy::items_after_statements)]
-    pub fn now() -> Self {
-        use crate::constants::TIMEZONE;
-
-        let now = chrono::Utc::now().with_timezone(&TIMEZONE);
+    pub fn now(timezone: Tz) -> Self {
+        let now = chrono::Utc::now().with_timezone(&timezone);
 
         cfg_if::cfg_if! {
             if #[cfg(feature = "demo_mode")] {
@@ -50,6 +50,10 @@ impl Time {
                 )
             }
         }
+    }
+
+    pub const fn zone_from(timezone: &str) -> Tz {
+        chrono_tz::Europe::Berlin
     }
 
     pub const fn minute(self) -> i8 {

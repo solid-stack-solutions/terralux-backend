@@ -39,24 +39,24 @@ async fn main() {
     let year_timer = Arc::new(Mutex::new(year_timer));
 
     // to avoid matching timers more than once per minute
-    let mut last_checked_time = Time::now() - Time::new(0, 1);
+    let mut last_checked_time = None;
 
     // start webserver ("fire and forget" instead of "await")
     tokio::spawn(web::start_server(Arc::clone(&year_timer), Arc::clone(&plug)));
 
     loop {
-        log::trace!("checking for new minute");
+        let year_timer = *year_timer.lock().await;
+        if let Some(ref year_timer) = year_timer {
+            log::trace!("checking for new minute");
 
-        let now = Time::now();
-        if now != last_checked_time {
-            if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
-                log::info!("it is {}", now);
-            } else {
-                log::trace!("new minute detected");
-            }
+            let now = Time::now(*year_timer.timezone());
+            if now != last_checked_time.unwrap_or(now - Time::new(0, 1)) {
+                if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
+                    log::info!("it is {}", now);
+                } else {
+                    log::trace!("new minute detected");
+                }
 
-            let year_timer = *year_timer.lock().await;
-            if let Some(year_timer) = year_timer {
                 let day_timer = year_timer.for_today();
                 if now == *day_timer.on_time() {
                     log::info!("matched timer for {now}, turning plug on");
@@ -67,11 +67,11 @@ async fn main() {
                 } else {
                     log::trace!("no timer matched");
                 }
-            } else {
-                log::trace!("nothing to check, no timers configured");
-            }
 
-            last_checked_time = now;
+                last_checked_time = Some(now);
+            }
+        } else {
+            log::trace!("nothing to check, no timers configured");
         }
 
         tokio::time::sleep(CHECK_INTERVAL).await;
