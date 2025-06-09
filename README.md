@@ -15,10 +15,15 @@ cargo run
 
 ### Using [Docker](https://www.docker.com/)
 ```sh
+# fetch source
 git clone https://github.com/solid-stack-solutions/terralux-backend
 cd terralux-backend
+# build image
 docker build -t terralux-backend:latest .
-docker run -p 5000:5000 terralux-backend:latest
+# prepare state file volume
+touch state.json
+# run image with state file volume
+docker run -p 5000:5000 -v ./state.json:/root/.local/share/terralux-backend-state.json terralux-backend:latest
 ```
 
 ### Using [Nix Flakes](https://wiki.nixos.org/wiki/Flakes)
