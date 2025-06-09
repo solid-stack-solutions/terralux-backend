@@ -50,7 +50,7 @@ async fn main() {
             log::trace!("checking for new minute");
 
             let now = Time::now(*year_timer.timezone());
-            if now != last_checked_time.unwrap_or(now - Time::new(0, 1)) {
+            if last_checked_time.map_or(true, |last_checked_time| now != last_checked_time) {
                 if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
                     log::info!("it is {}", now);
                 } else {
