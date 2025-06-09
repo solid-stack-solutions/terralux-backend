@@ -75,8 +75,18 @@ async fn put_configuration(
     bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
 
     let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
-    tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
-    let natural_api_days = sunrise_api::request(query.natural_latitude, query.natural_longitude).await?;
+
+    let local_is_natural =
+        (query.local_latitude  - query.natural_latitude ).abs() < f32::EPSILON &&
+        (query.local_longitude - query.natural_longitude).abs() < f32::EPSILON;
+
+    let natural_api_days = if local_is_natural {
+        log::debug!("using API response for local location as response for natural location");
+        local_api_days.clone()
+    } else {
+        tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
+        sunrise_api::request(query.natural_latitude, query.natural_longitude).await?
+    };
 
     let (state_year_timer, state_plug) = state;
 
