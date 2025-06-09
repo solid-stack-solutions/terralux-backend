@@ -22,9 +22,10 @@ reqwest = { version = "0.12", features = ["json", "native-tls-alpn"] }
 # logging
 log = "0.4.27" # api
 env_logger = "0.11.8" # implementation
-# get current time with timezone
-chrono    = "0.4"
-chrono-tz = { version = "0.10", features = ["serde"] }
+# time stuff
+chrono = "0.4" # get current time
+chrono-tz = { version = "0.10", features = ["serde"] } # deal with timezones
+iana-time-zone = "0.1.63" # get local timezone
 # (de)serialize to/from json
 serde = "1.0"
 serde_json = "1.0"

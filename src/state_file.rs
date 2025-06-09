@@ -1,4 +1,5 @@
 use crate::plug::Plug;
+use crate::time::Time;
 use crate::timer::year;
 use crate::web::{StatePlug, StateYearTimer};
 
@@ -25,7 +26,12 @@ pub fn read() -> Option<(Plug, year::Timer)> {
     };
 
     log::info!("successfully read last state from file");
-    Some(state.unwrap())
+
+    let state: (Plug, year::Timer) = state.unwrap();
+    let timezone = *state.1.timezone();
+    log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
+
+    Some(state)
 }
 
 #[allow(clippy::significant_drop_tightening)]

@@ -54,6 +54,7 @@ impl Timer {
         assert_eq!(natural_api_days.len(), 366);
 
         let timezone = Time::zone_from(&local_api_days[0].timezone);
+        log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
 
         // skip averaging if possible
         if natural_factor == 0. {
@@ -144,7 +145,7 @@ mod tests {
 
     fn index_test(year: i32, month: u32, day: u32, index: usize) {
         use chrono::TimeZone;
-        let time = chrono_tz::Europe::Berlin.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
+        let time = chrono_tz::CET.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         assert_eq!(Timer::index(time), index);
     }
 

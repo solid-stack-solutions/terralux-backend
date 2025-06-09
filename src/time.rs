@@ -52,8 +52,21 @@ impl Time {
         }
     }
 
-    pub const fn zone_from(timezone: &str) -> Tz {
-        chrono_tz::Europe::Berlin
+    pub fn zone_from(timezone: &str) -> Tz {
+        if let Ok(timezone) = timezone.parse::<Tz>() {
+            log::debug!("using timezone from sunrise API");
+            return timezone;
+        }
+
+        if let Ok(timezone) = iana_time_zone::get_timezone() {
+            if let Ok(timezone) = timezone.parse::<Tz>() {
+                log::debug!("using local timezone from iana-time-zone");
+                return timezone;
+            }
+        }
+
+        log::warn!("could not determine timezone, using default");
+        chrono_tz::CET
     }
 
     pub const fn minute(self) -> i8 {
