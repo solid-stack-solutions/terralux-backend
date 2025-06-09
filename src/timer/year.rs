@@ -3,11 +3,11 @@ use chrono_tz::Tz;
 
 use super::day;
 use crate::time::Time;
-use crate::constants::TIMEZONE;
 use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
+    timezone: Tz,
     /// includes leap day
     #[serde(with = "serde_big_array::BigArray")]
     day_timers: [day::Timer; 366]
@@ -16,25 +16,28 @@ pub struct Timer {
 impl Timer {
     /// day timers include leap day
     #[allow(clippy::large_types_passed_by_value)]
-    pub const fn new(day_timers: [day::Timer; 366]) -> Self {
-        Self { day_timers }
+    pub const fn new(timezone: Tz, day_timers: [day::Timer; 366]) -> Self {
+        Self { timezone, day_timers }
     }
 
     pub fn for_today(&self) -> &day::Timer {
-        let now = Utc::now().with_timezone(&TIMEZONE);
+        let now = Utc::now().with_timezone(&self.timezone);
 
         &self.day_timers[Self::index(now)]
     }
 
-    pub fn from_api_days(api_days: &[APIResponseDay]) -> Self {
+    pub fn from_api_days(api_days: &[APIResponseDay], timezone: Tz) -> Self {
         assert_eq!(api_days.len(), 366);
 
-        Self::new(api_days.iter().map(|day| {
-            day::Timer::new(
-                Time::from_military(&day.sunrise),
-                Time::from_military(&day.sunset)
-            )
-        }).collect::<Vec<_>>().try_into().unwrap())
+        Self::new(
+            timezone,
+            api_days.iter().map(|day| {
+                day::Timer::new(
+                    Time::from_military(&day.sunrise),
+                    Time::from_military(&day.sunset)
+                )
+            }).collect::<Vec<_>>().try_into().unwrap()
+        )
     }
 
     pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
@@ -50,9 +53,12 @@ impl Timer {
         assert_eq!(local_api_days.len(), 366);
         assert_eq!(natural_api_days.len(), 366);
 
+        let timezone = Time::zone_from(&local_api_days[0].timezone);
+        log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
+
         // skip averaging if possible
         if natural_factor == 0. {
-            return Self::from_api_days(local_api_days);
+            return Self::from_api_days(local_api_days, timezone);
         }
 
         let local_days = local_api_days.iter().map(|local_item| {
@@ -100,7 +106,11 @@ impl Timer {
             })
             .collect::<Vec<_>>();
 
-        Self::new(day_timers.try_into().unwrap())
+        Self::new(timezone, day_timers.try_into().unwrap())
+    }
+
+    pub const fn timezone(&self) -> &Tz {
+        &self.timezone
     }
 
     /// returns index of day timers to use for given moment in time
@@ -135,7 +145,7 @@ mod tests {
 
     fn index_test(year: i32, month: u32, day: u32, index: usize) {
         use chrono::TimeZone;
-        let time = TIMEZONE.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
+        let time = chrono_tz::CET.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap();
         assert_eq!(Timer::index(time), index);
     }
 

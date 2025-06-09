@@ -6,7 +6,7 @@ use crate::web;
 /// minimum interval between API requests to avoid rate limiting
 pub const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct APIResponseDay {
     /// YYYY-MM-DD
@@ -34,7 +34,7 @@ pub struct APIResponseDay {
     pub utc_offset: i32,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 struct APIResponse {
     #[serde(rename = "results")]
     days: Option<Vec<APIResponseDay>>,
