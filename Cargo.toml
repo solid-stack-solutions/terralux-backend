@@ -11,7 +11,7 @@ mock_plug = []
 demo_mode = []
 
 [dependencies]
-axum = "0.7" # webserver
+axum = { version = "0.7", features = ["macros"] } # webserver (with debug_handler macro)
 cfg-if = "1.0.0" # better `if cfg!(...)`
 dirs-next = "2.0.0" # platform-specific standard paths
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime

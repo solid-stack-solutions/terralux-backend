@@ -27,6 +27,10 @@ impl Timer {
         Self { day_timers }
     }
 
+    pub const fn day_timers(&self) -> &[day::Timer; 366] {
+        &self.day_timers
+    }
+
     pub fn for_today(&self, timezone: Tz) -> &day::Timer {
         let now = Utc::now().with_timezone(&timezone);
 
