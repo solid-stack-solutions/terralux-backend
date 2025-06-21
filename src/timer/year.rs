@@ -7,47 +7,42 @@ use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
-    timezone: Tz,
     /// includes leap day
     #[serde(with = "serde_big_array::BigArray")]
     day_timers: [day::Timer; 366]
 }
 
+/// intermediary representation for calculations
+#[derive(PartialEq)]
+struct LocalDay {
+    length: Time,
+    /// exactly in between sunrise and sunset
+    center: Time,
+}
+
 impl Timer {
     /// day timers include leap day
     #[allow(clippy::large_types_passed_by_value)]
-    pub const fn new(timezone: Tz, day_timers: [day::Timer; 366]) -> Self {
-        Self { timezone, day_timers }
+    pub const fn new(day_timers: [day::Timer; 366]) -> Self {
+        Self { day_timers }
     }
 
-    pub fn for_today(&self) -> &day::Timer {
-        let now = Utc::now().with_timezone(&self.timezone);
+    pub const fn day_timers(&self) -> &[day::Timer; 366] {
+        &self.day_timers
+    }
+
+    pub fn for_today(&self, timezone: Tz) -> &day::Timer {
+        let now = Utc::now().with_timezone(&timezone);
 
         &self.day_timers[Self::index(now)]
     }
 
-    pub fn from_api_days(api_days: &[APIResponseDay], timezone: Tz) -> Self {
-        assert_eq!(api_days.len(), 366);
-
-        Self::new(
-            timezone,
-            api_days.iter().map(|day| {
-                day::Timer::new(
-                    Time::from_military(&day.sunrise),
-                    Time::from_military(&day.sunset)
-                )
-            }).collect::<Vec<_>>().try_into().unwrap()
-        )
-    }
-
-    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
-        #[derive(PartialEq)]
-        struct LocalDay {
-            length: Time,
-            /// exactly in between sunrise and sunset
-            center: Time,
-        }
-
+    /// returns tuple of
+    /// - local timezone
+    /// - actual year timer (given `natural_factor`)
+    /// - local year timer (`natural_factor == 0.0`)
+    /// - natural year timer (`natural_factor == 1.0`)
+    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> (Tz, Self, Self, Self) {
         assert!(natural_factor >= 0.);
         assert!(natural_factor <= 1.);
         assert_eq!(local_api_days.len(), 366);
@@ -55,11 +50,6 @@ impl Timer {
 
         let timezone = Time::zone_from(&local_api_days[0].timezone);
         log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
-
-        // skip averaging if possible
-        if natural_factor == 0. {
-            return Self::from_api_days(local_api_days, timezone);
-        }
 
         let local_days = local_api_days.iter().map(|local_item| {
             let length = Time::from_hhmmss(&local_item.day_length);
@@ -95,6 +85,33 @@ impl Timer {
             natural_day_lengths.rotate_left(shift.abs().try_into().unwrap());
         }
 
+        // skip averaging if possible
+        let year_timer = if natural_factor == 0. {
+            Self::from_api_days(local_api_days)
+        } else {
+            Self::average(&local_days, &natural_day_lengths, natural_factor)
+        };
+
+        let local_year_timer = if natural_factor == 0. {
+            year_timer
+        } else {
+            Self::average(&local_days, &natural_day_lengths, 0.)
+        };
+
+        let natural_year_timer = if (natural_factor - 1.).abs() < f32::EPSILON {
+            year_timer
+        } else {
+            Self::average(&local_days, &natural_day_lengths, 1.)
+        };
+
+        (timezone, year_timer, local_year_timer, natural_year_timer)
+    }
+
+    /// compute year timer using a `natural_factor`
+    fn average(local_days: &[LocalDay], natural_day_lengths: &[Time], natural_factor: f32) -> Self {
+        assert_eq!(local_days.len(), 366);
+        assert_eq!(natural_day_lengths.len(), 366);
+
         let day_timers = local_days.iter()
             .zip(natural_day_lengths.iter())
             .map(|(local_day, natural_day_length)| {
@@ -105,12 +122,19 @@ impl Timer {
                 day::Timer::new(on, off)
             })
             .collect::<Vec<_>>();
-
-        Self::new(timezone, day_timers.try_into().unwrap())
+            
+        Self::new(day_timers.try_into().unwrap())
     }
 
-    pub const fn timezone(&self) -> &Tz {
-        &self.timezone
+    fn from_api_days(api_days: &[APIResponseDay]) -> Self {
+        assert_eq!(api_days.len(), 366);
+
+        Self::new(api_days.iter().map(|day| {
+            day::Timer::new(
+                Time::from_military(&day.sunrise),
+                Time::from_military(&day.sunset),
+            )
+        }).collect::<Vec<_>>().try_into().unwrap())
     }
 
     /// returns index of day timers to use for given moment in time

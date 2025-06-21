@@ -1,7 +1,7 @@
 mod timer;
 mod constants;
 mod plug;
-mod state_file;
+mod state;
 mod sunrise_api;
 mod time;
 mod web;
@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 
 use time::Time;
+use state::State;
 use constants::CHECK_INTERVAL;
 
 #[tokio::main]
@@ -31,25 +32,20 @@ async fn main() {
         }
     }
 
-    let (plug, year_timer) = match state_file::read() {
-        Some((plug, year_timer)) => (Some(plug), (Some(year_timer))),
-        None => (None, None),
-    };
-    let plug = Arc::new(Mutex::new(plug));
-    let year_timer = Arc::new(Mutex::new(year_timer));
+    let state = Arc::new(Mutex::new(State::read_from_file()));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = None;
 
     // start webserver ("fire and forget" instead of "await")
-    tokio::spawn(web::start_server(Arc::clone(&year_timer), Arc::clone(&plug)));
+    tokio::spawn(web::start_server(Arc::clone(&state)));
 
     loop {
-        let year_timer = *year_timer.lock().await;
-        if let Some(ref year_timer) = year_timer {
+        #[allow(clippy::significant_drop_in_scrutinee)]
+        if let Some(ref state) = *state.lock().await {
             log::trace!("checking for new minute");
 
-            let now = Time::now(*year_timer.timezone());
+            let now = Time::now(state.timezone);
             if last_checked_time.map_or(true, |last_checked_time| now != last_checked_time) {
                 if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
                     log::info!("it is {}", now);
@@ -57,13 +53,13 @@ async fn main() {
                     log::trace!("new minute detected");
                 }
 
-                let day_timer = year_timer.for_today();
+                let day_timer = state.year_timer.for_today(state.timezone);
                 if now == *day_timer.on_time() {
                     log::info!("matched timer for {now}, turning plug on");
-                    plug.lock().await.as_ref().unwrap().set_power_with_retry(true).await;
+                    state.plug.set_power_with_retry(true).await;
                 } else if now == *day_timer.off_time() {
                     log::info!("matched timer for {now}, turning plug off");
-                    plug.lock().await.as_ref().unwrap().set_power_with_retry(false).await;
+                    state.plug.set_power_with_retry(false).await;
                 } else {
                     log::trace!("no timer matched");
                 }
