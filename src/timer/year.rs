@@ -7,7 +7,6 @@ use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
-    timezone: Tz,
     /// includes leap day
     #[serde(with = "serde_big_array::BigArray")]
     day_timers: [day::Timer; 366]
@@ -16,31 +15,28 @@ pub struct Timer {
 impl Timer {
     /// day timers include leap day
     #[allow(clippy::large_types_passed_by_value)]
-    pub const fn new(timezone: Tz, day_timers: [day::Timer; 366]) -> Self {
-        Self { timezone, day_timers }
+    pub const fn new(day_timers: [day::Timer; 366]) -> Self {
+        Self { day_timers }
     }
 
-    pub fn for_today(&self) -> &day::Timer {
-        let now = Utc::now().with_timezone(&self.timezone);
+    pub fn for_today(&self, timezone: Tz) -> &day::Timer {
+        let now = Utc::now().with_timezone(&timezone);
 
         &self.day_timers[Self::index(now)]
     }
 
-    pub fn from_api_days(api_days: &[APIResponseDay], timezone: Tz) -> Self {
+    pub fn from_api_days(api_days: &[APIResponseDay]) -> Self {
         assert_eq!(api_days.len(), 366);
 
-        Self::new(
-            timezone,
-            api_days.iter().map(|day| {
-                day::Timer::new(
-                    Time::from_military(&day.sunrise),
-                    Time::from_military(&day.sunset)
-                )
-            }).collect::<Vec<_>>().try_into().unwrap()
-        )
+        Self::new(api_days.iter().map(|day| {
+            day::Timer::new(
+                Time::from_military(&day.sunrise),
+                Time::from_military(&day.sunset),
+            )
+        }).collect::<Vec<_>>().try_into().unwrap())
     }
 
-    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> Self {
+    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> (Self, Tz) {
         #[derive(PartialEq)]
         struct LocalDay {
             length: Time,
@@ -58,7 +54,7 @@ impl Timer {
 
         // skip averaging if possible
         if natural_factor == 0. {
-            return Self::from_api_days(local_api_days, timezone);
+            return (Self::from_api_days(local_api_days), timezone);
         }
 
         let local_days = local_api_days.iter().map(|local_item| {
@@ -106,11 +102,7 @@ impl Timer {
             })
             .collect::<Vec<_>>();
 
-        Self::new(timezone, day_timers.try_into().unwrap())
-    }
-
-    pub const fn timezone(&self) -> &Tz {
-        &self.timezone
+        (Self::new(day_timers.try_into().unwrap()), timezone)
     }
 
     /// returns index of day timers to use for given moment in time

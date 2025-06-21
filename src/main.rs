@@ -45,7 +45,7 @@ async fn main() {
         if let Some(ref state) = *state.lock().await {
             log::trace!("checking for new minute");
 
-            let now = Time::now(*state.year_timer.timezone());
+            let now = Time::now(state.timezone);
             if last_checked_time.map_or(true, |last_checked_time| now != last_checked_time) {
                 if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
                     log::info!("it is {}", now);
@@ -53,7 +53,7 @@ async fn main() {
                     log::trace!("new minute detected");
                 }
 
-                let day_timer = state.year_timer.for_today();
+                let day_timer = state.year_timer.for_today(state.timezone);
                 if now == *day_timer.on_time() {
                     log::info!("matched timer for {now}, turning plug on");
                     state.plug.set_power_with_retry(true).await;

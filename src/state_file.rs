@@ -26,7 +26,7 @@ pub fn read() -> Option<State> {
     log::info!("successfully read last state from file");
 
     let state = state.unwrap();
-    let timezone = *state.year_timer.timezone();
+    let timezone = state.timezone;
     log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
 
     Some(state)

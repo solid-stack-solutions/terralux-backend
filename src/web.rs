@@ -60,35 +60,42 @@ async fn put_configuration(
     extract::State(state): extract::State<StateWrapper>,
     extract::Query(query): extract::Query<PutConfigurationQuery>
 ) -> Response<&'static str> {
-    bad_request_if(query.natural_factor < 0. || query.natural_factor > 1., "natural_factor must be between 0.0 and 1.0")?;
-    bad_request_if(query.local_latitude < -90. || query.local_latitude > 90., "local_latitude must be between -90.0 and 90.0")?;
-    bad_request_if(query.local_longitude < -180. || query.local_longitude > 180., "local_longitude must be between -180.0 and 180.0")?;
-    bad_request_if(query.natural_latitude < -90. || query.natural_latitude > 90., "natural_latitude must be between -90.0 and 90.0")?;
-    bad_request_if(query.natural_longitude < -180. || query.natural_longitude > 180., "natural_longitude must be between -180.0 and 180.0")?;
+    let natural_factor = query.natural_factor;
+    let local_latitude = query.local_latitude;
+    let local_longitude = query.local_longitude;
+    let natural_latitude = query.natural_latitude;
+    let natural_longitude = query.natural_longitude;
+
+    bad_request_if(!(   0. ..=   1.).contains(&natural_factor), "natural_factor must be between 0.0 and 1.0")?;
+    bad_request_if(!(- 90. ..=  90.).contains(&local_latitude), "local_latitude must be between -90.0 and 90.0")?;
+    bad_request_if(!(-180. ..= 180.).contains(&local_longitude), "local_longitude must be between -180.0 and 180.0")?;
+    bad_request_if(!(- 90. ..=  90.).contains(&natural_latitude), "natural_latitude must be between -90.0 and 90.0")?;
+    bad_request_if(!(-180. ..= 180.).contains(&natural_longitude), "natural_longitude must be between -180.0 and 180.0")?;
+
     let plug = Plug::new(query.plug_url.clone()).await;
     bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
 
-    let local_api_days = sunrise_api::request(query.local_latitude, query.local_longitude).await?;
+    let local_api_days = sunrise_api::request(local_latitude, local_longitude).await?;
 
     let local_is_natural =
-        (query.local_latitude  - query.natural_latitude ).abs() < f32::EPSILON &&
-        (query.local_longitude - query.natural_longitude).abs() < f32::EPSILON;
+        (local_latitude  - natural_latitude ).abs() < f32::EPSILON &&
+        (local_longitude - natural_longitude).abs() < f32::EPSILON;
 
     let natural_api_days = if local_is_natural {
         log::debug!("using API response for local location as response for natural location");
         local_api_days.clone()
     } else {
         tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
-        sunrise_api::request(query.natural_latitude, query.natural_longitude).await?
+        sunrise_api::request(natural_latitude, natural_longitude).await?
     };
 
     let plug = plug.unwrap();
     log::info!("configured plug url: {}", plug.get_url());
 
-    let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
+    let (year_timer, timezone) = year::Timer::from_api_days_average(natural_factor, &local_api_days, &natural_api_days);
     log::info!("configured timers");
 
-    *state.lock().await = Some(State { plug, year_timer });
+    *state.lock().await = Some(State { plug, year_timer, timezone, natural_factor, local_latitude, local_longitude, natural_latitude, natural_longitude });
     state_file::write(Arc::clone(&state));
 
     Ok("Successfully configured timers")
@@ -106,7 +113,7 @@ async fn get_configuration_today(
 ) -> Response<Json<day::Timer>> {
     state.lock().await.as_ref().map_or_else(
         || Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first"))),
-        |state| Ok(Json(*state.year_timer.for_today()))
+        |state| Ok(Json(*state.year_timer.for_today(state.timezone)))
     )
 }
 
