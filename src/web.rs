@@ -1,19 +1,13 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-    Json,
-};
+use axum::{extract, Json, http::StatusCode};
 
+use crate::state::{State, StateWrapper};
 use crate::plug::Plug;
 use crate::state_file;
 use crate::sunrise_api;
 use crate::timer::{day, year};
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
-pub type StateYearTimer = Arc<Mutex<Option<year::Timer>>>;
-pub type StatePlug = Arc<Mutex<Option<Plug>>>;
 
 fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
     if condition {
@@ -63,8 +57,8 @@ struct PutConfigurationQuery {
     ),
 )]
 async fn put_configuration(
-    State(state): State<(StateYearTimer, StatePlug)>,
-    Query(query): Query<PutConfigurationQuery>
+    extract::State(state): extract::State<StateWrapper>,
+    extract::Query(query): extract::Query<PutConfigurationQuery>
 ) -> Response<&'static str> {
     bad_request_if(query.natural_factor < 0. || query.natural_factor > 1., "natural_factor must be between 0.0 and 1.0")?;
     bad_request_if(query.local_latitude < -90. || query.local_latitude > 90., "local_latitude must be between -90.0 and 90.0")?;
@@ -88,16 +82,14 @@ async fn put_configuration(
         sunrise_api::request(query.natural_latitude, query.natural_longitude).await?
     };
 
-    let (state_year_timer, state_plug) = state;
-
-    *state_plug.lock().await = Some(plug.unwrap());
-    log::info!("configured plug url: {}", query.plug_url);
+    let plug = plug.unwrap();
+    log::info!("configured plug url: {}", plug.get_url());
 
     let year_timer = year::Timer::from_api_days_average(query.natural_factor, &local_api_days, &natural_api_days);
-    *state_year_timer.lock().await = Some(year_timer);
     log::info!("configured timers");
 
-    state_file::write(state_plug.clone(), state_year_timer.clone());
+    *state.lock().await = Some(State { plug, year_timer });
+    state_file::write(Arc::clone(&state));
 
     Ok("Successfully configured timers")
 }
@@ -110,11 +102,11 @@ async fn put_configuration(
     ),
 )]
 async fn get_configuration_today(
-    State(state_year_timer): State<StateYearTimer>
+    extract::State(state): extract::State<StateWrapper>
 ) -> Response<Json<day::Timer>> {
-    state_year_timer.lock().await.as_ref().map_or_else(
+    state.lock().await.as_ref().map_or_else(
         || Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first"))),
-        |year_timer| Ok(Json(*year_timer.for_today()))
+        |state| Ok(Json(*state.year_timer.for_today()))
     )
 }
 
@@ -137,17 +129,17 @@ struct PutPlugPowerQuery {
 )]
 #[allow(clippy::significant_drop_tightening)]
 async fn put_plug_power(
-    State(state_plug): State<StatePlug>,
-    Query(query): Query<PutPlugPowerQuery>
+    extract::State(state): extract::State<StateWrapper>,
+    extract::Query(query): extract::Query<PutPlugPowerQuery>
 ) -> Response<String> {
     use crate::plug::Error;
 
-    let state_plug = state_plug.lock().await;
-    if state_plug.is_none() {
+    let state = state.lock().await;
+    if state.is_none() {
         return Err((StatusCode::CONFLICT, String::from("Plug not yet configured, consider calling /configuration first")));
     }
 
-    let plug = state_plug.as_ref().unwrap();
+    let plug = &state.as_ref().unwrap().plug;
     match plug.set_power(query.power).await {
         Ok(()) => Ok(format!("Successfully turned plug {}", if query.power { "on" } else { "off" })),
         Err(error) => {
@@ -177,16 +169,16 @@ struct GetPlugPowerResponse {
 )]
 #[allow(clippy::significant_drop_tightening)]
 async fn get_plug_power(
-    State(state_plug): State<StatePlug>
+    extract::State(state): extract::State<StateWrapper>
 ) -> Response<Json<GetPlugPowerResponse>> {
     use crate::plug::Error;
 
-    let state_plug = state_plug.lock().await;
-    if state_plug.is_none() {
+    let state = state.lock().await;
+    if state.is_none() {
         return Err((StatusCode::CONFLICT, String::from("Plug not yet configured, consider calling /configuration first")));
     }
 
-    let plug = state_plug.as_ref().unwrap();
+    let plug = &state.as_ref().unwrap().plug;
     match plug.get_power().await {
         Ok(power) => Ok(Json(GetPlugPowerResponse { power })),
         Err(error) => {
@@ -200,7 +192,7 @@ async fn get_plug_power(
 }
 
 /// start webserver. never terminates.
-pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
+pub async fn start_server(state: StateWrapper) {
     use utoipa::OpenApi;
     use tokio::net::TcpListener;
     use utoipa_swagger_ui::SwaggerUi;
@@ -224,13 +216,13 @@ pub async fn start_server(year_timer: StateYearTimer, plug: StatePlug) {
     let app = axum::Router::new()
         // api routes
         .route("/configuration", put(put_configuration))
-            .with_state((Arc::clone(&year_timer), Arc::clone(&plug)))
+            .with_state(Arc::clone(&state))
         .route("/configuration/today", get(get_configuration_today))
-            .with_state(Arc::clone(&year_timer))
+            .with_state(Arc::clone(&state))
         .route("/plug/power", put(put_plug_power))
-            .with_state(Arc::clone(&plug))
+            .with_state(Arc::clone(&state))
         .route("/plug/power", get(get_plug_power))
-            .with_state(Arc::clone(&plug))
+            .with_state(Arc::clone(&state))
 
         // temporarily redirect root to swagger ui
         .route("/", get(|| async { Redirect::temporary("/swagger-ui") }))

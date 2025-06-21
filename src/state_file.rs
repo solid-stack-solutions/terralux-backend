@@ -1,9 +1,7 @@
-use crate::plug::Plug;
+use crate::state::{State, StateWrapper};
 use crate::time::Time;
-use crate::timer::year;
-use crate::web::{StatePlug, StateYearTimer};
 
-pub fn read() -> Option<(Plug, year::Timer)> {
+pub fn read() -> Option<State> {
     let path = dirs_next::data_dir();
     if path.is_none() {
         log::debug!("couldn't get path to data directory, operating system probably unsupported");
@@ -19,7 +17,7 @@ pub fn read() -> Option<(Plug, year::Timer)> {
         return None;
     };
 
-    let state = serde_json::from_str(&content.unwrap());
+    let state = serde_json::from_str::<State>(&content.unwrap());
     if state.is_err() {
         log::warn!("read state file, but content did not have the expected structure");
         return None;
@@ -27,15 +25,15 @@ pub fn read() -> Option<(Plug, year::Timer)> {
 
     log::info!("successfully read last state from file");
 
-    let state: (Plug, year::Timer) = state.unwrap();
-    let timezone = *state.1.timezone();
+    let state = state.unwrap();
+    let timezone = *state.year_timer.timezone();
     log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
 
     Some(state)
 }
 
 #[allow(clippy::significant_drop_tightening)]
-pub fn write(state_plug: StatePlug, state_year_timer: StateYearTimer) {
+pub fn write(state: StateWrapper) {
     // try to write file as a "fire and forget" as its result does not need to be awaited
     tokio::spawn(async move {
         let path = dirs_next::data_dir();
@@ -47,15 +45,7 @@ pub fn write(state_plug: StatePlug, state_year_timer: StateYearTimer) {
         let mut path = path.unwrap();
         path.push(crate::constants::STATE_FILE_NAME);
 
-        let content = {
-            let locked_plug = state_plug.lock().await;
-            let locked_year_timer = state_year_timer.lock().await;
-            let state = (
-                locked_plug.as_ref().unwrap(),
-                locked_year_timer.as_ref().unwrap(),
-            );
-            serde_json::to_string(&state).unwrap()
-        };
+        let content = serde_json::to_string(&*state.lock().await).unwrap();
 
         match tokio::fs::write(path, content).await {
             Ok(()) => log::info!("successfully wrote state file"),
