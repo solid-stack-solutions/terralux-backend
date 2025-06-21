@@ -28,6 +28,10 @@ pub struct State {
     pub timezone: Tz,
     /// actual timers to turn plug on/off every day
     pub year_timer: year::Timer,
+    /// same as `year_timer` if `natural_factor` is 0.0
+    pub local_year_timer: year::Timer,
+    /// same as `year_timer` if `natural_factor` is 1.0
+    pub natural_year_timer: year::Timer,
 }
 
 impl State {
