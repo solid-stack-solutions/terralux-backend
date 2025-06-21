@@ -1,7 +1,6 @@
 mod timer;
 mod constants;
 mod plug;
-mod state_file;
 mod state;
 mod sunrise_api;
 mod time;
@@ -11,6 +10,7 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 
 use time::Time;
+use state::State;
 use constants::CHECK_INTERVAL;
 
 #[tokio::main]
@@ -32,7 +32,7 @@ async fn main() {
         }
     }
 
-    let state = Arc::new(Mutex::new(state_file::read()));
+    let state = Arc::new(Mutex::new(State::read_from_file()));
 
     // to avoid matching timers more than once per minute
     let mut last_checked_time = None;

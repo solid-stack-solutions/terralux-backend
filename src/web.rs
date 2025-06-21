@@ -1,11 +1,10 @@
 use std::sync::Arc;
 use axum::{extract, Json, http::StatusCode};
 
-use crate::state::{State, StateWrapper};
 use crate::plug::Plug;
-use crate::state_file;
 use crate::sunrise_api;
 use crate::timer::{day, year};
+use crate::state::{State, StateWrapper};
 
 pub type Response<T> = Result<T, (StatusCode, String)>;
 
@@ -95,8 +94,8 @@ async fn put_configuration(
     let (year_timer, timezone) = year::Timer::from_api_days_average(natural_factor, &local_api_days, &natural_api_days);
     log::info!("configured timers");
 
-    *state.lock().await = Some(State { plug, year_timer, timezone, natural_factor, local_latitude, local_longitude, natural_latitude, natural_longitude });
-    state_file::write(Arc::clone(&state));
+    *state.lock().await = Some(State { natural_factor, local_latitude, local_longitude, natural_latitude, natural_longitude, plug, timezone, year_timer });
+    State::write_to_file(Arc::clone(&state));
 
     Ok("Successfully configured timers")
 }

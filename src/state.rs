@@ -2,6 +2,7 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use chrono_tz::Tz;
 
+use crate::time::Time;
 use crate::plug::Plug;
 use crate::timer::year;
 
@@ -25,6 +26,60 @@ pub struct State {
     pub plug: Plug,
     /// timezone to use for timer activations
     pub timezone: Tz,
-    /// timers to check every day
+    /// actual timers to turn plug on/off every day
     pub year_timer: year::Timer,
+}
+
+impl State {
+    pub fn read_from_file() -> Option<Self> {
+        let path = dirs_next::data_dir();
+        if path.is_none() {
+            log::debug!("couldn't get path to data directory, operating system probably unsupported");
+            return None;
+        };
+
+        let mut path = path.unwrap();
+        path.push(crate::constants::STATE_FILE_NAME);
+
+        let content = std::fs::read_to_string(path);
+        if content.is_err() {
+            log::info!("no state file found, waiting for configuration");
+            return None;
+        };
+
+        let state = serde_json::from_str::<Self>(&content.unwrap());
+        if state.is_err() {
+            log::warn!("read state file, but content did not have the expected structure");
+            return None;
+        };
+
+        log::info!("successfully read last state from file");
+
+        let state = state.unwrap();
+        let timezone = state.timezone;
+        log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
+
+        Some(state)
+    }
+
+    pub fn write_to_file(state: StateWrapper) {
+        // try to write file as a "fire and forget" as its result does not need to be awaited
+        tokio::spawn(async move {
+            let path = dirs_next::data_dir();
+            if path.is_none() {
+                log::warn!("couldn't get path to data directory to write state file to, your operating system is unsupported");
+                return;
+            };
+
+            let mut path = path.unwrap();
+            path.push(crate::constants::STATE_FILE_NAME);
+
+            let content = serde_json::to_string(&*state.lock().await).unwrap();
+
+            match tokio::fs::write(path, content).await {
+                Ok(()) => log::info!("successfully wrote state file"),
+                Err(_) => log::warn!("failed to write state file"),
+            };
+        });
+    }
 }
