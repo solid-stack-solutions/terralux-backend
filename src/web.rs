@@ -21,11 +21,11 @@ fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
 struct PutConfigurationQuery {
     /// URL to Shelly smart plug compatible with [this API](https://shelly-api-docs.shelly.cloud/gen1/#shelly-plug-plugs-relay-0)
     /// without a trailing slash
-    #[param(default = "http://192.168.178.123")]
+    #[param(example = "http://192.168.178.123")]
     plug_url: String,
 
     /// Average sunrise/sunset times between local ones (`0.0`) and ones from the natural habitat (`1.0`)
-    #[param(minimum = 0.0, maximum = 1.0, default = 0.5)]
+    #[param(minimum = 0.0, maximum = 1.0, example = 0.5)]
     natural_factor: f32,
 
     /// Latitude of geographic coordinates of terrarium, from -90° (south) to 90° (north)
@@ -105,7 +105,7 @@ async fn put_configuration(
 #[derive(utoipa::ToSchema, serde::Serialize)]
 struct GetConfigurationResponse {
     /// Average sunrise/sunset times between local ones (`0.0`) and ones from the natural habitat (`1.0`)
-    #[schema(minimum = 0.0, maximum = 1.0, default = 0.5)]
+    #[schema(minimum = 0.0, maximum = 1.0, example = 0.5)]
     natural_factor: f32,
 
     /// Latitude of geographic coordinates of terrarium, from -90° (south) to 90° (north)
