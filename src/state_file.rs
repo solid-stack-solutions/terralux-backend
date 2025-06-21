@@ -32,7 +32,6 @@ pub fn read() -> Option<State> {
     Some(state)
 }
 
-#[allow(clippy::significant_drop_tightening)]
 pub fn write(state: StateWrapper) {
     // try to write file as a "fire and forget" as its result does not need to be awaited
     tokio::spawn(async move {
