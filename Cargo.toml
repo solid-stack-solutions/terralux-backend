@@ -12,6 +12,7 @@ demo_mode = []
 
 [dependencies]
 axum = { version = "0.7", features = ["macros"] } # webserver (with debug_handler macro)
+tower-http = { version = "0.6.6", features = ["cors"] } # for handling cors
 cfg-if = "1.0.0" # better `if cfg!(...)`
 dirs-next = "2.0.0" # platform-specific standard paths
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime
