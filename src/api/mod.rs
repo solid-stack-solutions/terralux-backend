@@ -13,12 +13,6 @@ use axum::{response::Redirect, routing::{get, put}, http::{header, StatusCode, M
 use crate::constants::PORT;
 use crate::state::StateWrapper;
 
-use configuration::get::get_configuration;
-use configuration::put::put_configuration;
-use configuration::today::get::get_configuration_today;
-use plug::power::get::get_plug_power;
-use plug::power::put::put_plug_power;
-
 pub type Response<T> = Result<T, (StatusCode, String)>;
 
 fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
@@ -31,7 +25,6 @@ fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
 
 /// start webserver. never terminates.
 pub async fn start_server(state: StateWrapper) {
-
     // set up utoipa swagger ui
     #[derive(OpenApi)]
     #[openapi(paths(
@@ -47,11 +40,11 @@ pub async fn start_server(state: StateWrapper) {
     // configure routes
     let app = axum::Router::new()
         // api routes
-        .route("/configuration", put(put_configuration))
-        .route("/configuration", get(get_configuration))
-        .route("/configuration/today", get(get_configuration_today))
-        .route("/plug/power", put(put_plug_power))
-        .route("/plug/power", get(get_plug_power))
+        .route("/configuration", get(configuration::get::get_configuration))
+        .route("/configuration", put(configuration::put::put_configuration))
+        .route("/configuration/today", get(configuration::today::get::get_configuration_today))
+        .route("/plug/power", put(plug::power::put::put_plug_power))
+        .route("/plug/power", get(plug::power::get::get_plug_power))
 
         .with_state(Arc::clone(&state))
 
