@@ -1,10 +1,10 @@
+mod api;
 mod timer;
 mod constants;
 mod plug;
 mod state;
 mod sunrise_api;
 mod time;
-mod web;
 
 use tokio::sync::Mutex;
 use std::sync::Arc;
@@ -38,7 +38,7 @@ async fn main() {
     let mut last_checked_time = None;
 
     // start webserver ("fire and forget" instead of "await")
-    tokio::spawn(web::start_server(Arc::clone(&state)));
+    tokio::spawn(api::start_server(Arc::clone(&state)));
 
     loop {
         #[allow(clippy::significant_drop_in_scrutinee)]
