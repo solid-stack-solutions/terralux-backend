@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use axum::{extract, Json, http::StatusCode};
+use tower_http::cors::CorsLayer;
+use axum::{extract, Json, http::{header, StatusCode, Method}};
 
 use crate::plug::Plug;
 use crate::sunrise_api;
@@ -308,6 +309,15 @@ pub async fn start_server(state: StateWrapper) {
         .route("/plug/power", get(get_plug_power))
 
         .with_state(Arc::clone(&state))
+
+        // allow CORS from frontend
+        .layer(CorsLayer::new()
+            .allow_origin([
+                "http://localhost:4173".parse().unwrap(), // vite dev default
+                "http://localhost:5173".parse().unwrap(), // vite preview default
+            ])
+            .allow_methods([Method::GET, Method::PUT])
+            .allow_headers([header::CONTENT_TYPE]))
 
         // temporarily redirect root to swagger ui
         .route("/", get(|| async { Redirect::temporary("/swagger-ui") }))
