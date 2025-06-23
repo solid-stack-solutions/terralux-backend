@@ -32,6 +32,7 @@ async fn main() {
         }
     }
 
+    // thread-safe state (persisted with json file)
     let state = Arc::new(Mutex::new(State::read_from_file()));
 
     // to avoid matching timers more than once per minute
