@@ -2,9 +2,10 @@ use axum::extract;
 use std::sync::Arc;
 
 use crate::plug::Plug;
-use crate::sunrise_api;
 use crate::timer::year;
+use crate::sunrise_api::request;
 use crate::state::{State, StateWrapper};
+use crate::constants::MIN_SUNRISE_API_REQUEST_INTERVAL;
 use crate::api::{WebResponse, bad_request_if};
 
 // from query parameters
@@ -65,7 +66,7 @@ pub async fn endpoint(
     let plug = Plug::new(query.plug_url.clone()).await;
     bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
 
-    let local_api_days = sunrise_api::request(local_latitude, local_longitude).await?;
+    let local_api_days = request(local_latitude, local_longitude).await?;
 
     let local_is_natural =
         (local_latitude  - natural_latitude ).abs() < f32::EPSILON &&
@@ -75,8 +76,8 @@ pub async fn endpoint(
         log::debug!("using API response for local location as response for natural location");
         local_api_days.clone()
     } else {
-        tokio::time::sleep(sunrise_api::MIN_REQUEST_INTERVAL).await; // avoid API rate limiting
-        sunrise_api::request(natural_latitude, natural_longitude).await?
+        tokio::time::sleep(MIN_SUNRISE_API_REQUEST_INTERVAL).await; // avoid API rate limiting
+        request(natural_latitude, natural_longitude).await?
     };
 
     let plug = plug.unwrap();

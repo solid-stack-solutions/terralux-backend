@@ -1,10 +1,6 @@
-use std::time::Duration;
 use axum::http::StatusCode;
 
 use crate::api::WebResponse;
-
-/// minimum interval between API requests to avoid rate limiting
-pub const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[allow(dead_code)]
