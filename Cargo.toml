@@ -11,26 +11,26 @@ mock_plug = []
 demo_mode = []
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] } # webserver (with debug_handler macro)
+axum = { version = "0.8.4", features = ["macros"] } # webserver (with debug_handler macro)
 tower-http = { version = "0.6.6", features = ["cors"] } # for handling cors
-cfg-if = "1.0.0" # better `if cfg!(...)`
+cfg-if = "1.0.1" # better `if cfg!(...)`
 dirs-next = "2.0.0" # platform-specific standard paths
-tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "fs"] } # async runtime
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros", "fs"] } # async runtime
 # make http requests
 # native-tls-alpn feature is somehow necessary to get useful responses
 # from sunrisesunset.io when running inside a docker container
-reqwest = { version = "0.12", features = ["json", "native-tls-alpn"] }
+reqwest = { version = "0.12.20", features = ["json", "native-tls-alpn"] }
 # logging
 log = "0.4.27" # api
 env_logger = "0.11.8" # implementation
 # time stuff
-chrono = "0.4" # get current time
-chrono-tz = { version = "0.10", features = ["serde"] } # deal with timezones
+chrono = "0.4.41" # get current time
+chrono-tz = { version = "0.10.3", features = ["serde"] } # deal with timezones
 iana-time-zone = "0.1.63" # get local timezone
 # (de)serialize to/from json
-serde = "1.0"
-serde_json = "1.0"
+serde = "1.0.219"
+serde_json = "1.0.140"
 serde-big-array = "0.5.1" # for arrays with >32 elements
 # swagger ui / openapi documentation support for axum
-utoipa = { version = "5.3", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
+utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "vendored"] }
