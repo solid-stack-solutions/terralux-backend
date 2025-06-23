@@ -13,9 +13,9 @@ use axum::{response::Redirect, routing::{get, put}, http::{header, StatusCode, M
 use crate::constants::PORT;
 use crate::state::StateWrapper;
 
-pub type Response<T> = Result<T, (StatusCode, String)>;
+pub type WebResponse<T> = Result<T, (StatusCode, String)>;
 
-fn bad_request_if(condition: bool, message: &'static str) -> Response<()> {
+fn bad_request_if(condition: bool, message: &'static str) -> WebResponse<()> {
     if condition {
         Err((StatusCode::BAD_REQUEST, String::from(message)))
     } else {

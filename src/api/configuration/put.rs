@@ -5,7 +5,7 @@ use crate::plug::Plug;
 use crate::sunrise_api;
 use crate::timer::year;
 use crate::state::{State, StateWrapper};
-use crate::api::{Response, bad_request_if};
+use crate::api::{WebResponse, bad_request_if};
 
 // from query parameters
 #[derive(utoipa::IntoParams, serde::Deserialize)]
@@ -49,7 +49,7 @@ pub struct PutConfigurationQuery {
 pub async fn put_configuration(
     extract::State(state): extract::State<StateWrapper>,
     extract::Query(query): extract::Query<PutConfigurationQuery>
-) -> Response<&'static str> {
+) -> WebResponse<&'static str> {
     let natural_factor = query.natural_factor;
     let local_latitude = query.local_latitude;
     let local_longitude = query.local_longitude;

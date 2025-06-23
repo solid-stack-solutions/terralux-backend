@@ -1,7 +1,7 @@
 use axum::{extract, Json, http::StatusCode};
 
 use crate::timer::day;
-use crate::api::Response;
+use crate::api::WebResponse;
 use crate::state::StateWrapper;
 
 // from query parameters
@@ -61,7 +61,7 @@ pub struct GetConfigurationResponse {
 #[allow(clippy::significant_drop_tightening)]
 pub async fn get_configuration(
     extract::State(state): extract::State<StateWrapper>
-) -> Response<Json<GetConfigurationResponse>> {
+) -> WebResponse<Json<GetConfigurationResponse>> {
     let state = state.lock().await;
     if state.is_none() {
         return Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first")));

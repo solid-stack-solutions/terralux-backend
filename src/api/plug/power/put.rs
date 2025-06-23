@@ -1,6 +1,6 @@
 use axum::{extract, http::StatusCode};
 
-use crate::api::Response;
+use crate::api::WebResponse;
 use crate::state::StateWrapper;
 
 // from query parameters
@@ -24,7 +24,7 @@ pub struct PutPlugPowerQuery {
 pub async fn put_plug_power(
     extract::State(state): extract::State<StateWrapper>,
     extract::Query(query): extract::Query<PutPlugPowerQuery>
-) -> Response<String> {
+) -> WebResponse<String> {
     use crate::plug::Error;
 
     let state = state.lock().await;

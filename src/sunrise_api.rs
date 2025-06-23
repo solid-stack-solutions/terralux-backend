@@ -1,7 +1,7 @@
 use std::time::Duration;
 use axum::http::StatusCode;
 
-use crate::api;
+use crate::api::WebResponse;
 
 /// minimum interval between API requests to avoid rate limiting
 pub const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
@@ -43,7 +43,7 @@ struct APIResponse {
 }
 
 /// result has exactly 366 elements
-pub async fn request(latitude: f32, longitude: f32) -> api::Response<Vec<APIResponseDay>> {
+pub async fn request(latitude: f32, longitude: f32) -> WebResponse<Vec<APIResponseDay>> {
     // request leap year to get 366 response days
     let url = format!("https://api.sunrisesunset.io/json?lat={latitude}&lng={longitude}&date_start=2000-01-01&date_end=2000-12-31&time_format=military");
     log::debug!("requesting latitude {latitude} and longitude {longitude}: {url}");

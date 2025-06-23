@@ -1,6 +1,6 @@
 use axum::{extract, Json, http::StatusCode};
 
-use crate::api::Response;
+use crate::api::WebResponse;
 use crate::state::StateWrapper;
 
 // as json response
@@ -21,7 +21,7 @@ pub struct GetPlugPowerResponse {
 #[allow(clippy::significant_drop_tightening)]
 pub async fn get_plug_power(
     extract::State(state): extract::State<StateWrapper>
-) -> Response<Json<GetPlugPowerResponse>> {
+) -> WebResponse<Json<GetPlugPowerResponse>> {
     use crate::plug::Error;
 
     let state = state.lock().await;
