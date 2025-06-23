@@ -1,5 +1,5 @@
 # inspired by basic example from https://hub.docker.com/_/rust/
-FROM rust:1.82.0 AS builder
+FROM rust:1.87.0 AS builder
 
 WORKDIR /usr/src/terralux-backend
 COPY . .
