@@ -5,7 +5,7 @@ use crate::state::StateWrapper;
 
 // as json response
 #[derive(utoipa::ToSchema, serde::Serialize)]
-pub struct GetPlugPowerResponse {
+pub struct Response {
     /// Whether the plug is on (`true`) or off (`false`)
     power: bool,
 }
@@ -13,15 +13,15 @@ pub struct GetPlugPowerResponse {
 #[utoipa::path(
     get, path = "/plug/power",
     responses(
-        (status = 200, description = "Got plugs power state (`true` meaning \"on\" and `false` meaning \"off\")", body = GetPlugPowerResponse),
+        (status = 200, description = "Got plugs power state (`true` meaning \"on\" and `false` meaning \"off\")", body = Response),
         (status = 409, description = "Plug not yet configured"),
         (status = 502, description = "Unexpected response from plug"),
     ),
 )]
 #[allow(clippy::significant_drop_tightening)]
-pub async fn get_plug_power(
+pub async fn endpoint(
     extract::State(state): extract::State<StateWrapper>
-) -> WebResponse<Json<GetPlugPowerResponse>> {
+) -> WebResponse<Json<Response>> {
     use crate::plug::Error;
 
     let state = state.lock().await;
@@ -31,7 +31,7 @@ pub async fn get_plug_power(
 
     let plug = &state.as_ref().unwrap().plug;
     match plug.get_power().await {
-        Ok(power) => Ok(Json(GetPlugPowerResponse { power })),
+        Ok(power) => Ok(Json(Response { power })),
         Err(error) => {
             let message = match error {
                 Error::SendingRequest => format!("Error while sending HTTP request to plug, make sure it's available on {}", plug.get_url()),
