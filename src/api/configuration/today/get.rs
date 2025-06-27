@@ -11,7 +11,7 @@ use crate::state::StateWrapper;
         (status = 409, description = "Not yet configured"),
     ),
 )]
-pub async fn endpoint(
+pub async fn get_configuration_today(
     extract::State(state): extract::State<StateWrapper>
 ) -> WebResponse<Json<day::Timer>> {
     state.lock().await.as_ref().map_or_else(

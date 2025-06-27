@@ -4,9 +4,9 @@ use crate::timer::day;
 use crate::api::WebResponse;
 use crate::state::StateWrapper;
 
-// as json response
+// from query parameters
 #[derive(utoipa::ToSchema, serde::Serialize)]
-pub struct Response {
+pub struct GetConfigurationResponse {
     /// Average sunrise/sunset times between local ones (`0.0`) and ones from the natural habitat (`1.0`)
     #[schema(minimum = 0.0, maximum = 1.0, example = 0.5)]
     natural_factor: f32,
@@ -54,21 +54,21 @@ pub struct Response {
 #[utoipa::path(
     get, path = "/configuration",
     responses(
-        (status = 200, description = "Got configuration", body = Response),
+        (status = 200, description = "Got configuration", body = GetConfigurationResponse),
         (status = 409, description = "Not yet configured"),
     ),
 )]
 #[allow(clippy::significant_drop_tightening)]
-pub async fn endpoint(
+pub async fn get_configuration(
     extract::State(state): extract::State<StateWrapper>
-) -> WebResponse<Json<Response>> {
+) -> WebResponse<Json<GetConfigurationResponse>> {
     let state = state.lock().await;
     if state.is_none() {
         return Err((StatusCode::CONFLICT, String::from("Not yet configured, consider calling /configuration first")));
     }
     let state = state.as_ref().unwrap();
 
-    Ok(Json(Response {
+    Ok(Json(GetConfigurationResponse {
         natural_factor: state.natural_factor,
         local_latitude: state.local_latitude,
         local_longitude: state.local_longitude,

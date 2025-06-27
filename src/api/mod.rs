@@ -29,22 +29,22 @@ pub async fn start_server(state: StateWrapper) {
     #[derive(OpenApi)]
     #[openapi(paths(
         // functions with #[utoipa::path(...)]
-        configuration::get::endpoint,
-        configuration::put::endpoint,
-        configuration::today::get::endpoint,
-        plug::power::get::endpoint,
-        plug::power::put::endpoint,
+        configuration::get::get_configuration,
+        configuration::put::put_configuration,
+        configuration::today::get::get_configuration_today,
+        plug::power::get::get_plug_power,
+        plug::power::put::put_plug_power,
     ))]
     struct ApiDoc;
 
     // configure routes
     let app = axum::Router::new()
         // api routes
-        .route("/configuration", get(configuration::get::endpoint))
-        .route("/configuration", put(configuration::put::endpoint))
-        .route("/configuration/today", get(configuration::today::get::endpoint))
-        .route("/plug/power", put(plug::power::put::endpoint))
-        .route("/plug/power", get(plug::power::get::endpoint))
+        .route("/configuration", get(configuration::get::get_configuration))
+        .route("/configuration", put(configuration::put::put_configuration))
+        .route("/configuration/today", get(configuration::today::get::get_configuration_today))
+        .route("/plug/power", put(plug::power::put::put_plug_power))
+        .route("/plug/power", get(plug::power::get::get_plug_power))
 
         .with_state(Arc::clone(&state))
 

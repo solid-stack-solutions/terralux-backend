@@ -5,14 +5,14 @@ use crate::state::StateWrapper;
 
 // from query parameters
 #[derive(utoipa::IntoParams, serde::Deserialize)]
-pub struct Query {
+pub struct PutPlugPowerQuery {
     /// Whether to turn the plug on (`true`) or off (`false`)
     power: bool,
 }
 
 #[utoipa::path(
     put, path = "/plug/power",
-    params(Query),
+    params(PutPlugPowerQuery),
     responses(
         (status = 200, description = "Successfully set plugs power state"),
         (status = 400, description = "Query parameters did not match expected structure"),
@@ -21,9 +21,9 @@ pub struct Query {
     ),
 )]
 #[allow(clippy::significant_drop_tightening)]
-pub async fn endpoint(
+pub async fn put_plug_power(
     extract::State(state): extract::State<StateWrapper>,
-    extract::Query(query): extract::Query<Query>
+    extract::Query(query): extract::Query<PutPlugPowerQuery>
 ) -> WebResponse<String> {
     use crate::plug::Error;
 
