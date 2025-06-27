@@ -40,7 +40,7 @@ impl State {
         if path.is_none() {
             log::debug!("couldn't get path to data directory, operating system probably unsupported");
             return None;
-        };
+        }
 
         let mut path = path.unwrap();
         path.push(crate::constants::STATE_FILE_NAME);
@@ -49,13 +49,13 @@ impl State {
         if content.is_err() {
             log::info!("no state file found, waiting for configuration");
             return None;
-        };
+        }
 
         let state = serde_json::from_str::<Self>(&content.unwrap());
         if state.is_err() {
             log::warn!("read state file, but content did not have the expected structure");
             return None;
-        };
+        }
 
         log::info!("successfully read last state from file");
 
@@ -73,7 +73,7 @@ impl State {
             if path.is_none() {
                 log::warn!("couldn't get path to data directory to write state file to, your operating system is unsupported");
                 return;
-            };
+            }
 
             let mut path = path.unwrap();
             path.push(crate::constants::STATE_FILE_NAME);
@@ -83,7 +83,7 @@ impl State {
             match tokio::fs::write(path, content).await {
                 Ok(()) => log::info!("successfully wrote state file"),
                 Err(_) => log::warn!("failed to write state file"),
-            };
+            }
         });
     }
 }

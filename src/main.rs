@@ -47,9 +47,9 @@ async fn main() {
             log::trace!("checking for new minute");
 
             let now = Time::now(state.timezone);
-            if last_checked_time.map_or(true, |last_checked_time| now != last_checked_time) {
+            if last_checked_time != Some(now) {
                 if cfg!(feature = "demo_mode") && now.minute() % 15 == 0 {
-                    log::info!("it is {}", now);
+                    log::info!("it is {now}");
                 } else {
                     log::trace!("new minute detected");
                 }
