@@ -10,7 +10,7 @@ use crate::api::{WebResponse, bad_request_if};
 
 // from query parameters
 #[derive(utoipa::IntoParams, serde::Deserialize)]
-pub struct Query {
+pub struct PutConfigurationQuery {
     /// URL to Shelly smart plug compatible with [this API](https://shelly-api-docs.shelly.cloud/gen1/#shelly-plug-plugs-relay-0)
     /// without a trailing slash
     #[param(example = "http://192.168.178.123")]
@@ -39,7 +39,8 @@ pub struct Query {
 
 #[utoipa::path(
     put, path = "/configuration",
-    params(Query),
+    tag = "Configuration",
+    params(PutConfigurationQuery),
     responses(
         (status = 200, description = "Successfully configured timers"),
         (status = 400, description = "Query parameters did not match expected structure"),
@@ -47,9 +48,9 @@ pub struct Query {
         (status = 502, description = "Unexpected response from sunrise API"),
     ),
 )]
-pub async fn endpoint(
+pub async fn put_configuration(
     extract::State(state): extract::State<StateWrapper>,
-    extract::Query(query): extract::Query<Query>
+    extract::Query(query): extract::Query<PutConfigurationQuery>
 ) -> WebResponse<&'static str> {
     let natural_factor = query.natural_factor;
     let local_latitude = query.local_latitude;

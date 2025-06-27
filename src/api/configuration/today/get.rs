@@ -6,12 +6,13 @@ use crate::state::StateWrapper;
 
 #[utoipa::path(
     get, path = "/configuration/today",
+    tag = "Configuration",
     responses(
         (status = 200, description = "Got todays configuration", body = day::Timer),
         (status = 409, description = "Not yet configured"),
     ),
 )]
-pub async fn endpoint(
+pub async fn get_configuration_today(
     extract::State(state): extract::State<StateWrapper>
 ) -> WebResponse<Json<day::Timer>> {
     state.lock().await.as_ref().map_or_else(

@@ -65,7 +65,7 @@ pub async fn request(latitude: f32, longitude: f32) -> WebResponse<Vec<APIRespon
 
     let response = serde_json::from_str::<APIResponse>(&response_text);
     if response.is_err() {
-        log::warn!("failed to deserialize the following response: {}", response_text);
+        log::warn!("failed to deserialize the following response: {response_text}");
         return Err((StatusCode::BAD_GATEWAY, String::from("Error while parsing sunrise API response")));
     }
 

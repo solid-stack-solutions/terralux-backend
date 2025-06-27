@@ -93,7 +93,7 @@ impl Plug {
         }
     }
 
-    pub fn get_url(&self) -> &str {
+    pub const fn get_url(&self) -> &str {
         self.base_url.as_str()
     }
 }
