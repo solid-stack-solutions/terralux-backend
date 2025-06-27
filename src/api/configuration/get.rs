@@ -4,7 +4,7 @@ use crate::timer::day;
 use crate::api::WebResponse;
 use crate::state::StateWrapper;
 
-// from query parameters
+// as json response
 #[derive(utoipa::ToSchema, serde::Serialize)]
 pub struct GetConfigurationResponse {
     /// Average sunrise/sunset times between local ones (`0.0`) and ones from the natural habitat (`1.0`)
