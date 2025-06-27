@@ -6,6 +6,7 @@ use crate::state::StateWrapper;
 
 #[utoipa::path(
     get, path = "/configuration/today",
+    tag = "Configuration",
     responses(
         (status = 200, description = "Got todays configuration", body = day::Timer),
         (status = 409, description = "Not yet configured"),

@@ -12,6 +12,7 @@ pub struct GetPlugPowerResponse {
 
 #[utoipa::path(
     get, path = "/plug/power",
+    tag = "Plug",
     responses(
         (status = 200, description = "Got plugs power state (`true` meaning \"on\" and `false` meaning \"off\")", body = GetPlugPowerResponse),
         (status = 409, description = "Plug not yet configured"),

@@ -53,6 +53,7 @@ pub struct GetConfigurationResponse {
 
 #[utoipa::path(
     get, path = "/configuration",
+    tag = "Configuration",
     responses(
         (status = 200, description = "Got configuration", body = GetConfigurationResponse),
         (status = 409, description = "Not yet configured"),

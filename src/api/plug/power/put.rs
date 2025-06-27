@@ -12,6 +12,7 @@ pub struct PutPlugPowerQuery {
 
 #[utoipa::path(
     put, path = "/plug/power",
+    tag = "Plug",
     params(PutPlugPowerQuery),
     responses(
         (status = 200, description = "Successfully set plugs power state"),

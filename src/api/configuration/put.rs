@@ -39,6 +39,7 @@ pub struct PutConfigurationQuery {
 
 #[utoipa::path(
     put, path = "/configuration",
+    tag = "Configuration",
     params(PutConfigurationQuery),
     responses(
         (status = 200, description = "Successfully configured timers"),
