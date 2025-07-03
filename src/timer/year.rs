@@ -70,32 +70,18 @@ impl Timer {
                     ((sunset - sunrise) / 2.0) + sunrise
                 };
                 Ok(LocalDay { length, center })
-            }).collect::<Vec<_>>();
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
 
-        // return the first error if present
-        if let Some(Err(error)) = local_days.iter().find(|r| r.is_err()) {
-            return Err(error.clone());
-        }
-
-        let local_days = local_days.into_iter()
-            .map(|result| result.unwrap())
-            .collect::<Vec<_>>();
-
-        let natural_day_lengths = natural_api_days.iter()
+        let mut natural_day_lengths = natural_api_days.iter()
             .map(|natural_item| -> WebResponse<Time> {
                 let day_length = Self::map_api_day_field(natural_item.day_length.clone())?;
                 Time::from_hhmmss(&day_length)
                     .map_err(|()| (StatusCode::BAD_REQUEST, String::from("Natural day length could not be parsed, coordinates might be too close to a polar region")))
-            }).collect::<Vec<_>>();
-
-        // return the first error if present
-        if let Some(Err(error)) = natural_day_lengths.iter().find(|r| r.is_err()) {
-            return Err(error.clone());
-        }
-
-        let mut natural_day_lengths = natural_day_lengths.into_iter()
-            .map(|result| result.unwrap())
-            .collect::<Vec<_>>();
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
 
         let local_max = local_days.iter()
             .max_by(|a, b| a.length.cmp(&b.length))
@@ -178,16 +164,9 @@ impl Timer {
                     Time::from_military(&sunrise),
                     Time::from_military(&sunset),
                 ))
-            }).collect::<Vec<_>>();
-
-        // return the first error if present
-        if let Some(Err(error)) = day_timers.iter().find(|r| r.is_err()) {
-            return Err(error.clone());
-        }
-
-        let day_timers = day_timers.into_iter()
-            .map(|result| result.unwrap())
-            .collect::<Vec<_>>();
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self::new(day_timers.try_into().unwrap()))
     }
