@@ -76,6 +76,11 @@ impl Time {
         chrono_tz::CET
     }
 
+    /// is in normal day time range
+    pub fn is_valid(self) -> bool {
+        (0 ..= 23).contains(&self.hour) && (0 ..= 59).contains(&self.minute)
+    }
+
     pub const fn minute(self) -> i8 {
         self.minute
     }

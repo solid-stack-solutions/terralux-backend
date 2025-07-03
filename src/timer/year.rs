@@ -126,16 +126,23 @@ impl Timer {
             Self::average(&local_days, &natural_day_lengths, natural_factor)
         };
 
-        let local_year_timer = if natural_factor == 0. {
-            year_timer
-        } else {
-            Self::average(&local_days, &natural_day_lengths, 0.)
-        };
-
         let natural_year_timer = if (natural_factor - 1.).abs() < f32::EPSILON {
             year_timer
         } else {
             Self::average(&local_days, &natural_day_lengths, 1.)
+        };
+
+        let natural_year_timer_is_valid = natural_year_timer.day_timers().iter()
+            .flat_map(|timer| [timer.on_time(), timer.off_time()])
+            .all(|time| time.is_valid());
+        if !natural_year_timer_is_valid {
+            return Err((StatusCode::BAD_REQUEST, "Computed timers exceed day borders, days are too long, coordinates might be too close to a polar region".to_string()));
+        }
+
+        let local_year_timer = if natural_factor == 0. {
+            year_timer
+        } else {
+            Self::average(&local_days, &natural_day_lengths, 0.)
         };
 
         Ok((timezone, year_timer, local_year_timer, natural_year_timer))
