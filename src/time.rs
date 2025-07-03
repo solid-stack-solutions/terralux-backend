@@ -30,6 +30,9 @@ impl Time {
     /// e.g. for "NaN:NaN:NaN" (which the sunrise API might return close to poles).
     pub fn from_hhmmss(hhmmss_time: &str) -> Result<Self, ()> {
         let parts = hhmmss_time.split(':').collect::<Vec<_>>();
+        if parts.len() < 2 {
+            return Err(());
+        }
         let Ok(hour) = parts[0].parse() else {
             return Err(());
         };
