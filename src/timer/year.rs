@@ -52,19 +52,19 @@ impl Timer {
         assert_eq!(local_api_days.len(), 366);
         assert_eq!(natural_api_days.len(), 366);
 
-        let timezone = Self::map_api_day_field(&local_api_days[0].timezone)?;
-        let timezone = Time::zone_from(timezone);
+        let timezone = Self::map_api_day_field(local_api_days[0].timezone.clone())?;
+        let timezone = Time::zone_from(&timezone);
         log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
 
         let local_days = local_api_days.iter()
             .map(|local_item| -> WebResponse<LocalDay> {
-                let day_length = Self::map_api_day_field(&local_item.day_length)?;
+                let day_length = Self::map_api_day_field(local_item.day_length.clone())?;
                 let length = Time::from_hhmmss(&day_length);
                 let center = {
-                    let sunrise = Self::map_api_day_field(&local_item.sunrise)?;
-                    let sunrise = Time::from_military(sunrise);
-                    let sunset = Self::map_api_day_field(&local_item.sunset)?;
-                    let sunset = Time::from_military(sunset);
+                    let sunrise = Self::map_api_day_field(local_item.sunrise.clone())?;
+                    let sunrise = Time::from_military(&sunrise);
+                    let sunset = Self::map_api_day_field(local_item.sunset.clone())?;
+                    let sunset = Time::from_military(&sunset);
                     ((sunset - sunrise) / 2.0) + sunrise
                 };
                 Ok(LocalDay { length, center })
@@ -81,8 +81,8 @@ impl Timer {
 
         let natural_day_lengths = natural_api_days.iter()
             .map(|natural_item| -> WebResponse<Time> {
-                let day_length = Self::map_api_day_field(&natural_item.day_length)?;
-                Ok(Time::from_hhmmss(day_length))
+                let day_length = Self::map_api_day_field(natural_item.day_length.clone())?;
+                Ok(Time::from_hhmmss(&day_length))
             }).collect::<Vec<_>>();
 
         // return the first error if present
@@ -162,8 +162,8 @@ impl Timer {
 
         let day_timers = api_days.iter()
             .map(|day| -> WebResponse<day::Timer> {
-                let sunrise = Self::map_api_day_field(&day.sunrise)?;
-                let sunset = Self::map_api_day_field(&day.sunset)?;
+                let sunrise = Self::map_api_day_field(day.sunrise.clone())?;
+                let sunset = Self::map_api_day_field(day.sunset.clone())?;
                 Ok(day::Timer::new(
                     Time::from_military(&sunrise),
                     Time::from_military(&sunset),
@@ -199,11 +199,11 @@ impl Timer {
     }
 
     /// map a field of an `APIResponseDay` to a `WebResponse`
-    fn map_api_day_field<T>(option: &Option<T>) -> WebResponse<&T> {
-        match option {
-            Some(t) => Ok(t),
-            None => Err((StatusCode::BAD_GATEWAY, String::from("Error while processing sunrise API response, a required field was null"))),
-        }
+    fn map_api_day_field<T>(option: Option<T>) -> WebResponse<T> {
+        option.map_or_else(
+            || Err((StatusCode::BAD_GATEWAY, String::from("Error while processing sunrise API response, a required field was null"))),
+            |some| Ok(some)
+        )
     }
 }
 
