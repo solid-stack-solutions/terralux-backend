@@ -85,7 +85,7 @@ pub async fn put_configuration(
     log::info!("configured plug url: {}", plug.get_url());
 
     let (timezone, year_timer, local_year_timer, natural_year_timer) =
-        year::Timer::from_api_days_average(natural_factor, &local_api_days, &natural_api_days);
+        year::Timer::from_api_days_average(natural_factor, &local_api_days, &natural_api_days)?;
     log::info!("configured timers");
 
     *state.lock().await = Some(State { natural_factor, local_latitude, local_longitude, natural_latitude, natural_longitude, plug, timezone, year_timer, local_year_timer, natural_year_timer });
