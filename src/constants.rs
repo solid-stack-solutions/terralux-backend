@@ -9,6 +9,12 @@ pub const STATE_FILE_NAME: &str = "terralux-backend-state.json";
 /// value was determined experimentally.
 pub const MIN_SUNRISE_API_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
+/// absolute value of geographic coordinate latitude of polar circle.
+/// in theory, this should be around 66.56083, but the sunrise
+/// API seems to return different values starting at 65.73.
+/// to get a simpler number, we round down to 65.
+pub const ABS_POLAR_CIRCLE_LAT: f32 = 65.;
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "demo_mode")] {
         /// to accelerate flow of time. should be > 0.

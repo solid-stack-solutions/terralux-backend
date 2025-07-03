@@ -11,16 +11,16 @@ pub struct GetConfigurationResponse {
     #[schema(minimum = 0.0, maximum = 1.0, example = 0.5)]
     natural_factor: f32,
 
-    /// Latitude of geographic coordinates of terrarium, from -90° (south) to 90° (north)
-    #[schema(minimum = -90.0, maximum = 90.0)]
+    /// Latitude of geographic coordinates of terrarium, from -65° (south) to 65° (north) (limits exclusive)
+    #[schema(minimum = -65.0, maximum = 65.0)]
     local_latitude: f32,
 
     /// Longitude of geographic coordinates of terrarium, from -180° (west) to 180° (east)
     #[schema(minimum = -180.0, maximum = 180.0)]
     local_longitude: f32,
 
-    /// Latitude of geographic coordinates of the animals natural habitat, from -90° (south) to 90° (north)
-    #[schema(minimum = -90.0, maximum = 90.0)]
+    /// Latitude of geographic coordinates of the animals natural habitat, from -65° (south) to 65° (north) (limits exclusive)
+    #[schema(minimum = -65.0, maximum = 65.0)]
     natural_latitude: f32,
 
     /// Longitude of geographic coordinates of the animals natural habitat, from -180° (west) to 180° (east)

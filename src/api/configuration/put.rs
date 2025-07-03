@@ -5,8 +5,8 @@ use crate::plug::Plug;
 use crate::timer::year;
 use crate::sunrise_api::request;
 use crate::state::{State, StateWrapper};
-use crate::constants::MIN_SUNRISE_API_REQUEST_INTERVAL;
 use crate::api::{WebResponse, bad_request_if};
+use crate::constants::{MIN_SUNRISE_API_REQUEST_INTERVAL, ABS_POLAR_CIRCLE_LAT};
 
 // from query parameters
 #[derive(utoipa::IntoParams, serde::Deserialize)]
@@ -20,16 +20,16 @@ pub struct PutConfigurationQuery {
     #[param(minimum = 0.0, maximum = 1.0, example = 0.5)]
     natural_factor: f32,
 
-    /// Latitude of geographic coordinates of terrarium, from -90° (south) to 90° (north)
-    #[param(minimum = -90.0, maximum = 90.0)]
+    /// Latitude of geographic coordinates of terrarium, from -65° (south) to 65° (north) (limits exclusive)
+    #[param(minimum = -65.0, maximum = 65.0)]
     local_latitude: f32,
 
     /// Longitude of geographic coordinates of terrarium, from -180° (west) to 180° (east)
     #[param(minimum = -180.0, maximum = 180.0)]
     local_longitude: f32,
 
-    /// Latitude of geographic coordinates of the animals natural habitat, from -90° (south) to 90° (north)
-    #[param(minimum = -90.0, maximum = 90.0)]
+    /// Latitude of geographic coordinates of the animals natural habitat, from -65° (south) to 65° (north) (limits exclusive)
+    #[param(minimum = -65.0, maximum = 65.0)]
     natural_latitude: f32,
 
     /// Longitude of geographic coordinates of the animals natural habitat, from -180° (west) to 180° (east)
@@ -43,7 +43,7 @@ pub struct PutConfigurationQuery {
     params(PutConfigurationQuery),
     responses(
         (status = 200, description = "Successfully configured timers"),
-        (status = 400, description = "At least one coordinate is too close to a polar region"),
+        (status = 400, description = "Query parameters did not match expected structure"),
         (status = 429, description = "Reached sunrise API request rate limit"),
         (status = 502, description = "Unexpected response from sunrise API"),
     ),
@@ -58,14 +58,16 @@ pub async fn put_configuration(
     let natural_latitude = query.natural_latitude;
     let natural_longitude = query.natural_longitude;
 
-    bad_request_if(!(   0. ..=   1.).contains(&natural_factor), "natural_factor must be between 0.0 and 1.0")?;
-    bad_request_if(!(- 90. ..=  90.).contains(&local_latitude), "local_latitude must be between -90.0 and 90.0")?;
-    bad_request_if(!(-180. ..= 180.).contains(&local_longitude), "local_longitude must be between -180.0 and 180.0")?;
-    bad_request_if(!(- 90. ..=  90.).contains(&natural_latitude), "natural_latitude must be between -90.0 and 90.0")?;
-    bad_request_if(!(-180. ..= 180.).contains(&natural_longitude), "natural_longitude must be between -180.0 and 180.0")?;
+    bad_request_if(!(   0. ..=   1.).contains(&natural_factor), "natural_factor must be between 0.0 and 1.0".to_string())?;
+    bad_request_if(!(-180. ..= 180.).contains(&local_longitude), "local_longitude must be between -180.0 and 180.0".to_string())?;
+    bad_request_if(!(-180. ..= 180.).contains(&natural_longitude), "natural_longitude must be between -180.0 and 180.0".to_string())?;
+    bad_request_if(  local_latitude <= -ABS_POLAR_CIRCLE_LAT ||   local_latitude >= ABS_POLAR_CIRCLE_LAT,
+        format!("local_latitude must be between -{ABS_POLAR_CIRCLE_LAT:.1} and {ABS_POLAR_CIRCLE_LAT:.1} (limits exclusive)"))?;
+    bad_request_if(natural_latitude <= -ABS_POLAR_CIRCLE_LAT || natural_latitude >= ABS_POLAR_CIRCLE_LAT,
+        format!("natural_latitude must be between -{ABS_POLAR_CIRCLE_LAT:.1} and {ABS_POLAR_CIRCLE_LAT:.1} (limits exclusive)"))?;
 
     let plug = Plug::new(query.plug_url.clone()).await;
-    bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable")?;
+    bad_request_if(plug.is_err(), "Could not get power state from plug using plug_url, make sure a compatible device is reachable".to_string())?;
 
     let local_api_days = request(local_latitude, local_longitude).await?;
 
