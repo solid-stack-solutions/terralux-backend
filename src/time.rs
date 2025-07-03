@@ -10,12 +10,11 @@ pub struct Time {
     minute: i8,
 }
 
+/// can be negative to enable more flexibility for calculations,
+/// but should be used as a normal positive time of day.
+/// if negative, hours and minutes both need to be negative.
 impl Time {
     pub const fn new(hour: i8, minute: i8) -> Self {
-        assert!(hour >=  0);
-        assert!(hour <  24);
-        assert!(minute >=  0);
-        assert!(minute <  60);
         Self { hour, minute }
     }
 
@@ -86,10 +85,6 @@ impl Time {
     }
 
     fn from_minutes(minutes: i16) -> Self {
-        // still in range of same day
-        assert!(minutes >= 0);
-        assert!(minutes < 24 * 60);
-
         let hour = minutes / 60;
         let minute = minutes - (hour * 60);
 
@@ -102,7 +97,11 @@ impl Time {
 
 impl std::fmt::Display for Time {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02}:{:02}", self.hour, self.minute)
+        write!(f, "{}{:02}:{:02}",
+            if self.hour < 0 || self.minute < 0 { "-" } else { "" },
+            self.hour,
+            self.minute
+        )
     }
 }
 
@@ -194,6 +193,16 @@ mod tests {
     }
 
     #[test]
+    fn sub_negative_1() {
+        assert_eq!(Time::new(8, 15) - Time::new(9, 30), Time::new(-1, -15));
+    }
+
+    #[test]
+    fn sub_negative_2() {
+        assert_eq!(Time::new(8, 15) - Time::new(-1, -50), Time::new(10, 5));
+    }
+
+    #[test]
     fn from_military() {
         assert_eq!(Time::from_military("1612"), Time::new(16, 12));
     }
@@ -213,4 +222,14 @@ mod tests {
         assert_eq!(Time::from_hhmmss("18:42:02").unwrap(), Time::new(18, 42));
         assert_eq!(Time::from_hhmmss("18:42:59").unwrap(), Time::new(18, 42));
     }
+
+    fn negative_test(minutes: i16, hour: i8, minute: i8) {
+        let time = Time::from_minutes(minutes);
+        assert_eq!(time, Time::new(hour, minute));
+        assert_eq!(time.minutes(), minutes);
+    }
+
+    #[test] fn negative_1() { negative_test(-1, 0, -1); }
+    #[test] fn negative_2() { negative_test(-60, -1, 0); }
+    #[test] fn negative_3() { negative_test(-61, -1, -1); }
 }
