@@ -1,8 +1,10 @@
 use chrono::{DateTime, NaiveDate, Datelike, Utc};
+use reqwest::StatusCode;
 use chrono_tz::Tz;
 
 use super::day;
 use crate::time::Time;
+use crate::api::WebResponse;
 use crate::sunrise_api::APIResponseDay;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
@@ -37,35 +39,53 @@ impl Timer {
         &self.day_timers[Self::index(now)]
     }
 
-    /// returns tuple of
+    /// if `Ok`, returns tuple of
     /// - local timezone
     /// - actual year timer (given `natural_factor`)
     /// - local year timer (`natural_factor == 0.0`)
     /// - natural year timer (`natural_factor == 1.0`)
-    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay]) -> (Tz, Self, Self, Self) {
+    pub fn from_api_days_average(natural_factor: f32, local_api_days: &[APIResponseDay], natural_api_days: &[APIResponseDay])
+        -> WebResponse<(Tz, Self, Self, Self)>
+    {
         assert!(natural_factor >= 0.);
         assert!(natural_factor <= 1.);
         assert_eq!(local_api_days.len(), 366);
         assert_eq!(natural_api_days.len(), 366);
 
-        let timezone = Time::zone_from(&local_api_days[0].timezone);
+        let timezone = Self::map_api_day_field(local_api_days[0].timezone.clone())?;
+        let timezone = Time::zone_from(&timezone);
         log::info!("using timezone {timezone}, current time is {}", Time::now(timezone));
 
-        let local_days = local_api_days.iter().map(|local_item| {
-            let length = Time::from_hhmmss(&local_item.day_length);
-            let center = {
-                let sunrise = Time::from_military(&local_item.sunrise);
-                let sunset = Time::from_military(&local_item.sunset);
-                ((sunset - sunrise) / 2.0) + sunrise
-            };
-            LocalDay { length, center }
-        }).collect::<Vec<_>>();
+        let local_days = local_api_days.iter()
+            .map(|local_item| -> WebResponse<LocalDay> {
+                let day_length = Self::map_api_day_field(local_item.day_length.clone())?;
+                let Ok(length) = Time::from_hhmmss(&day_length) else {
+                    return Err((StatusCode::BAD_REQUEST, String::from("Local day length could not be parsed, coordinates might be too close to a polar region")));
+                };
+                let center = {
+                    let sunrise = Self::map_api_day_field(local_item.sunrise.clone())?;
+                    let sunrise = Time::from_military(&sunrise);
+                    let sunset = Self::map_api_day_field(local_item.sunset.clone())?;
+                    let sunset = Time::from_military(&sunset);
+                    ((sunset - sunrise) / 2.0) + sunrise
+                };
+                Ok(LocalDay { length, center })
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let mut natural_day_lengths = natural_api_days.iter().map(|natural_item|
-            Time::from_hhmmss(&natural_item.day_length)
-        ).collect::<Vec<_>>();
+        let mut natural_day_lengths = natural_api_days.iter()
+            .map(|natural_item| -> WebResponse<Time> {
+                let day_length = Self::map_api_day_field(natural_item.day_length.clone())?;
+                Time::from_hhmmss(&day_length)
+                    .map_err(|()| (StatusCode::BAD_REQUEST, String::from("Natural day length could not be parsed, coordinates might be too close to a polar region")))
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let local_max = local_days.iter().max_by(|a, b| a.length.cmp(&b.length)).unwrap();
+        let local_max = local_days.iter()
+            .max_by(|a, b| a.length.cmp(&b.length))
+            .unwrap();
         let local_max_index = local_days.iter().position(|d| d == local_max).unwrap();
 
         let natural_max = natural_day_lengths.iter().max().unwrap();
@@ -87,15 +107,9 @@ impl Timer {
 
         // skip averaging if possible
         let year_timer = if natural_factor == 0. {
-            Self::from_api_days(local_api_days)
+            Self::from_api_days(local_api_days)?
         } else {
             Self::average(&local_days, &natural_day_lengths, natural_factor)
-        };
-
-        let local_year_timer = if natural_factor == 0. {
-            year_timer
-        } else {
-            Self::average(&local_days, &natural_day_lengths, 0.)
         };
 
         let natural_year_timer = if (natural_factor - 1.).abs() < f32::EPSILON {
@@ -104,7 +118,20 @@ impl Timer {
             Self::average(&local_days, &natural_day_lengths, 1.)
         };
 
-        (timezone, year_timer, local_year_timer, natural_year_timer)
+        let natural_year_timer_is_valid = natural_year_timer.day_timers().iter()
+            .flat_map(|timer| [timer.on_time(), timer.off_time()])
+            .all(|time| time.is_valid());
+        if !natural_year_timer_is_valid {
+            return Err((StatusCode::BAD_REQUEST, "Computed timers exceed day borders, days are too long, coordinates might be too close to a polar region".to_string()));
+        }
+
+        let local_year_timer = if natural_factor == 0. {
+            year_timer
+        } else {
+            Self::average(&local_days, &natural_day_lengths, 0.)
+        };
+
+        Ok((timezone, year_timer, local_year_timer, natural_year_timer))
     }
 
     /// compute year timer using a `natural_factor`
@@ -126,15 +153,22 @@ impl Timer {
         Self::new(day_timers.try_into().unwrap())
     }
 
-    fn from_api_days(api_days: &[APIResponseDay]) -> Self {
+    fn from_api_days(api_days: &[APIResponseDay]) -> WebResponse<Self> {
         assert_eq!(api_days.len(), 366);
 
-        Self::new(api_days.iter().map(|day| {
-            day::Timer::new(
-                Time::from_military(&day.sunrise),
-                Time::from_military(&day.sunset),
-            )
-        }).collect::<Vec<_>>().try_into().unwrap())
+        let day_timers = api_days.iter()
+            .map(|day| -> WebResponse<day::Timer> {
+                let sunrise = Self::map_api_day_field(day.sunrise.clone())?;
+                let sunset = Self::map_api_day_field(day.sunset.clone())?;
+                Ok(day::Timer::new(
+                    Time::from_military(&sunrise),
+                    Time::from_military(&sunset),
+                ))
+            })
+            // return the first error if present
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self::new(day_timers.try_into().unwrap()))
     }
 
     /// returns index of day timers to use for given moment in time
@@ -151,6 +185,14 @@ impl Timer {
         } 
 
         index.try_into().unwrap()
+    }
+
+    /// map a field of an `APIResponseDay` to a `WebResponse`
+    fn map_api_day_field<T>(option: Option<T>) -> WebResponse<T> {
+        option.map_or_else(
+            || Err((StatusCode::BAD_GATEWAY, String::from("Error while processing sunrise API response, a required field was null"))),
+            |some| Ok(some)
+        )
     }
 }
 

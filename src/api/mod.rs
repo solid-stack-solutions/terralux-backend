@@ -15,9 +15,9 @@ use crate::state::StateWrapper;
 
 pub type WebResponse<T> = Result<T, (StatusCode, String)>;
 
-fn bad_request_if(condition: bool, message: &'static str) -> WebResponse<()> {
+fn bad_request_if(condition: bool, message: String) -> WebResponse<()> {
     if condition {
-        Err((StatusCode::BAD_REQUEST, String::from(message)))
+        Err((StatusCode::BAD_REQUEST, message))
     } else {
         Ok(())
     }

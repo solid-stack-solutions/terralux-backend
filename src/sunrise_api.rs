@@ -2,32 +2,35 @@ use axum::http::StatusCode;
 
 use crate::api::WebResponse;
 
+/// all fields are options, because the API can return null for seemingly arbitrary
+/// fields if requesting coordinates close to the poles. by using options, we make
+/// sure to explicitly handle missing values for only the fields we need.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct APIResponseDay {
     /// YYYY-MM-DD
-    pub date: String,
+    pub date: Option<String>,
     /// time in military format
-    pub sunrise: String,
+    pub sunrise: Option<String>,
     /// time in military format
-    pub sunset: String,
+    pub sunset: Option<String>,
     /// time in military format
     pub first_light: Option<String>,
     /// time in military format
     pub last_light: Option<String>,
     /// time in military format
-    pub dawn: String,
+    pub dawn: Option<String>,
     /// time in military format
-    pub dusk: String,
+    pub dusk: Option<String>,
     /// time in military format
-    pub solar_noon: String,
+    pub solar_noon: Option<String>,
     /// time in military format
-    pub golden_hour: String,
+    pub golden_hour: Option<String>,
     /// HH:MM:SS
-    pub day_length: String,
+    pub day_length: Option<String>,
     /// e.g. `"America/New_York"`, see <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
-    pub timezone: String,
-    pub utc_offset: i32,
+    pub timezone: Option<String>,
+    pub utc_offset: Option<i32>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
