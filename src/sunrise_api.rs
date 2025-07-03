@@ -6,7 +6,7 @@ use crate::api::WebResponse;
 #[allow(dead_code)]
 pub struct APIResponseDay {
     /// YYYY-MM-DD
-    pub date: String,
+    pub date: Option<String>,
     /// time in military format
     pub sunrise: String,
     /// time in military format
@@ -16,18 +16,18 @@ pub struct APIResponseDay {
     /// time in military format
     pub last_light: Option<String>,
     /// time in military format
-    pub dawn: String,
+    pub dawn: Option<String>,
     /// time in military format
-    pub dusk: String,
+    pub dusk: Option<String>,
     /// time in military format
-    pub solar_noon: String,
+    pub solar_noon: Option<String>,
     /// time in military format
-    pub golden_hour: String,
+    pub golden_hour: Option<String>,
     /// HH:MM:SS
     pub day_length: String,
     /// e.g. `"America/New_York"`, see <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
     pub timezone: String,
-    pub utc_offset: i32,
+    pub utc_offset: Option<i32>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
