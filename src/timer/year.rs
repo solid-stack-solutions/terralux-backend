@@ -59,7 +59,9 @@ impl Timer {
         let local_days = local_api_days.iter()
             .map(|local_item| -> WebResponse<LocalDay> {
                 let day_length = Self::map_api_day_field(local_item.day_length.clone())?;
-                let length = Time::from_hhmmss(&day_length);
+                let Ok(length) = Time::from_hhmmss(&day_length) else {
+                    return Err((StatusCode::BAD_REQUEST, String::from("Local coordinates are too close to a polar region")));
+                };
                 let center = {
                     let sunrise = Self::map_api_day_field(local_item.sunrise.clone())?;
                     let sunrise = Time::from_military(&sunrise);
@@ -82,7 +84,8 @@ impl Timer {
         let natural_day_lengths = natural_api_days.iter()
             .map(|natural_item| -> WebResponse<Time> {
                 let day_length = Self::map_api_day_field(natural_item.day_length.clone())?;
-                Ok(Time::from_hhmmss(&day_length))
+                Time::from_hhmmss(&day_length)
+                    .map_err(|()| (StatusCode::BAD_REQUEST, String::from("Natural coordinates are too close to a polar region")))
             }).collect::<Vec<_>>();
 
         // return the first error if present

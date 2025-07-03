@@ -43,7 +43,7 @@ pub struct PutConfigurationQuery {
     params(PutConfigurationQuery),
     responses(
         (status = 200, description = "Successfully configured timers"),
-        (status = 400, description = "Query parameters did not match expected structure"),
+        (status = 400, description = "At least one coordinate is too close to a polar region"),
         (status = 429, description = "Reached sunrise API request rate limit"),
         (status = 502, description = "Unexpected response from sunrise API"),
     ),

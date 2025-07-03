@@ -26,10 +26,18 @@ impl Time {
         Self::new(hour.parse().unwrap(), minute.parse().unwrap())
     }
 
-    /// from time string with format "HH:MM:SS"
-    pub fn from_hhmmss(hhmmss_time: &str) -> Self {
+    /// from time string with format "HH:MM:SS".
+    /// this function might return `Err` if the time string does not have the expected format,
+    /// e.g. for "NaN:NaN:NaN" (which the sunrise API might return close to poles).
+    pub fn from_hhmmss(hhmmss_time: &str) -> Result<Self, ()> {
         let parts = hhmmss_time.split(':').collect::<Vec<_>>();
-        Self::new(parts[0].parse().unwrap(), parts[1].parse().unwrap())
+        let Ok(hour) = parts[0].parse() else {
+            return Err(());
+        };
+        let Ok(minute) = parts[1].parse() else {
+            return Err(());
+        };
+        Ok(Self::new(hour, minute))
     }
 
     #[allow(clippy::items_after_statements)]
@@ -202,7 +210,7 @@ mod tests {
 
     #[test]
     fn from_hhmmss() {
-        assert_eq!(Time::from_hhmmss("18:42:02"), Time::new(18, 42));
-        assert_eq!(Time::from_hhmmss("18:42:59"), Time::new(18, 42));
+        assert_eq!(Time::from_hhmmss("18:42:02").unwrap(), Time::new(18, 42));
+        assert_eq!(Time::from_hhmmss("18:42:59").unwrap(), Time::new(18, 42));
     }
 }
