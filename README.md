@@ -1,4 +1,7 @@
 # Terralux Backend
+
+### ⚠️ Archived, now maintained [here](https://github.com/julius-boettger/terralux-backend) ⚠️
+
 ### Powered by [SunriseSunset.io](https://sunrisesunset.io)
 
 ## Installation
